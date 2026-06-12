@@ -1,16 +1,41 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Alert, KeyboardAvoidingView, Platform,
-  ScrollView, Animated, ActivityIndicator, Easing, Image
-} from 'react-native';
 import { useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Easing,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text, TextInput, TouchableOpacity,
+  View
+} from 'react-native';
 import { useAuth } from '../src/context/AuthContext';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const STRENGTH_COLORS = ['#f44336', '#ff9800', '#8bc34a', '#2d9e2d'];
 const STRENGTH_LABELS = ['Weak', 'Fair', 'Good', 'Strong'];
+
+const COUNTRIES = [
+  'Afghanistan', 'Albania', 'Algeria', 'Argentina', 'Australia',
+  'Austria', 'Bangladesh', 'Belgium', 'Brazil', 'Canada',
+  'China', 'Colombia', 'Czech Republic', 'Denmark', 'Egypt',
+  'Ethiopia', 'Finland', 'France', 'Germany', 'Ghana',
+  'Greece', 'Hungary', 'India', 'Indonesia', 'Iran',
+  'Iraq', 'Ireland', 'Israel', 'Italy', 'Japan',
+  'Jordan', 'Kenya', 'Malaysia', 'Mexico', 'Morocco',
+  'Netherlands', 'New Zealand', 'Nigeria', 'Norway', 'Pakistan',
+  'Philippines', 'Poland', 'Portugal', 'Romania', 'Russia',
+  'Saudi Arabia', 'South Africa', 'South Korea', 'Spain', 'Sri Lanka',
+  'Sweden', 'Switzerland', 'Thailand', 'Turkey', 'Ukraine',
+  'United Arab Emirates', 'United Kingdom', 'United States', 'Vietnam',
+];
 
 function getPasswordStrength(password) {
   let score = 0;
@@ -68,6 +93,58 @@ function FloatingInput({ label, value, onChangeText, secureTextEntry, isPassword
         </TouchableOpacity>
       )}
     </View>
+  );
+}
+
+// ─── Country Picker ─────────────────────────────────────────────────────────
+function CountryPicker({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <TouchableOpacity
+        style={[styles.inputWrap, open && styles.inputWrapFocused]}
+        onPress={() => setOpen(true)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.countryLabel}>Country</Text>
+        <Text style={[styles.countryValue, !value && styles.countryPlaceholder]}>
+          {value || 'Select country'}
+        </Text>
+        <Text style={styles.countryChevron}>▼</Text>
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Country</Text>
+              <TouchableOpacity onPress={() => setOpen(false)} activeOpacity={0.7}>
+                <Text style={styles.modalDone}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={COUNTRIES}
+              keyExtractor={item => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.countryItem}
+                  onPress={() => { onChange(item); setOpen(false); }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.countryItemText, item === value && styles.countryItemSelected]}>
+                    {item}
+                  </Text>
+                  {item === value && (
+                    <Text style={styles.countryItemCheck}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -143,6 +220,7 @@ export default function LoginScreen() {
   const [fullName,   setFullName]   = useState('');
   const [phone,      setPhone]      = useState('');
   const [email,      setEmail]      = useState('');
+  const [country,    setCountry]    = useState('');
   const [loading,    setLoading]    = useState(false);
   const [showPw,     setShowPw]     = useState(false);
   const [pwStrength, setPwStrength] = useState(0);
@@ -187,13 +265,17 @@ export default function LoginScreen() {
   };
 
   const handleRegister = async () => {
-    if (!fullName || !email || !phone || !password) { shake(); Alert.alert('Missing fields', 'Please fill in all fields.'); return; }
+    if (!fullName || !email || !country || !phone || !password) {
+      shake();
+      Alert.alert('Missing fields', 'Please fill in all fields.');
+      return;
+    }
     setLoading(true);
     try {
       const res  = await fetch(`${API_URL}/api/user/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, email, phone: phone.replace(/\D/g, ''), password }),
+        body: JSON.stringify({ fullName, country, email, phone: phone.replace(/\D/g, ''), password }),
       });
       const data = await res.json();
       if (!res.ok) { Alert.alert('Error', data.message || 'Registration failed.'); return; }
@@ -301,6 +383,10 @@ export default function LoginScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
+
+              {/* Country Picker */}
+              <CountryPicker value={country} onChange={setCountry} />
+
               <FloatingInput
                 label="Phone number"
                 value={phone}
@@ -443,12 +529,45 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: '#e5e7e5',
     borderRadius: 12, paddingHorizontal: 14,
     marginBottom: 14, position: 'relative', height: 58,
+    justifyContent: 'center',
   },
   inputWrapFocused: { borderColor: '#2d9e2d' },
   floatLabel:  { position: 'absolute', left: 14 },
   floatInput:  { position: 'absolute', bottom: 8, left: 14, right: 14, fontSize: 14, color: '#222', padding: 0 },
   eyeBtn:      { position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' },
   eyeIcon:     { fontSize: 17 },
+
+  // Country picker
+  countryLabel:       { fontSize: 11, color: '#999', marginBottom: 4 },
+  countryValue:       { fontSize: 14, color: '#222' },
+  countryPlaceholder: { color: '#b0b8b0' },
+  countryChevron:     { position: 'absolute', right: 14, fontSize: 11, color: '#999' },
+
+  // Country modal
+  modalOverlay: {
+    flex: 1, justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  modalSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    maxHeight: '72%',
+  },
+  modalHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 20, paddingVertical: 16,
+    borderBottomWidth: 0.5, borderBottomColor: '#eee',
+  },
+  modalTitle: { fontSize: 15, fontWeight: '600', color: '#222' },
+  modalDone:  { fontSize: 14, color: '#2d9e2d', fontWeight: '600' },
+  countryItem: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 20, paddingVertical: 14,
+    borderBottomWidth: 0.5, borderBottomColor: '#f5f5f5',
+  },
+  countryItemText:     { fontSize: 14, color: '#333' },
+  countryItemSelected: { color: '#2d9e2d', fontWeight: '600' },
+  countryItemCheck:    { fontSize: 14, color: '#2d9e2d' },
 
   // Forgot
   forgotRow:  { alignItems: 'flex-end', marginBottom: 16, marginTop: -4 },

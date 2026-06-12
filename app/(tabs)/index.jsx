@@ -1,17 +1,21 @@
 // app/(tabs)/index.jsx
-import React, { useState, useEffect } from 'react';
-import {
-  View, Text, ScrollView, StyleSheet,
-  RefreshControl, TouchableOpacity, Image,
-} from 'react-native';
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import {
+  Image,
+  RefreshControl,
+  ScrollView, StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import HeroBanner from '../../src/components/HeroBanner';
 import FeatureCategories from '../../src/components/FeatureCategories';
+import HeroBanner from '../../src/components/HeroBanner';
+import InfoMenu from '../../src/components/InfoMenu';
 import ProductCard from '../../src/components/ProductCard';
 import PromoBanners from '../../src/components/PromoBanners';
 import SearchBar from '../../src/components/SearchBar';
-import InfoMenu from '../../src/components/InfoMenu';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -82,7 +86,6 @@ export default function HomeScreen() {
       {/* ── Sticky top bar ── */}
       <View style={styles.topBar}>
         {/* Logo */}
-        <TouchableOpacity onPress={() => router.push('/user/home')} style={styles.logoBtn}>
           <Image
             source={require('../../assets/UserLogo.png')}
             style={styles.logoImg}
@@ -92,7 +95,7 @@ export default function HomeScreen() {
             <Text style={styles.logoGramin}>Gramin</Text>
             <Text style={styles.logoKart}>Kart</Text>
           </View>
-        </TouchableOpacity>
+        
 
         {/* Search — takes remaining space */}
         <View style={styles.searchWrap}>
