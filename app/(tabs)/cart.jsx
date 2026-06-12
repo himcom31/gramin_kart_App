@@ -1,6 +1,6 @@
 // app/(tabs)/cart.jsx
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -38,6 +38,14 @@ const getName     = (item) => item?.name || item?.product?.name || 'Product';
 const getPrice    = (item) => Number(item?.sellingPrice ?? item?.price ?? item?.product?.sellingPrice ?? item?.product?.price ?? 0);
 const getOldPrice = (item) => Number(item?.mrp ?? item?.oldPrice ?? item?.product?.mrp ?? 0);
 const getId       = (item) => item?.productId || item?.product?.id || item?.id;
+
+// ─── Normalize cart response ──────────────────────────────────────────────────
+const normalizeCart = (data) =>
+  data?.items ||
+  data?.cart?.items ||
+  data?.data?.items ||
+  data?.data ||
+  (Array.isArray(data) ? data : []);
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 const Toast = ({ message, type, onDone }) => {
@@ -203,13 +211,22 @@ const SummaryRow = ({ label, value, bold, green }) => (
 
 // ─── MAIN SCREEN ──────────────────────────────────────────────────────────────
 export default function CartScreen() {
-  const { isLoggedIn }          = useAuth();
-  const router                  = useRouter();
-  const [items,      setItems]  = useState([]);
-  const [loading,    setLoading] = useState(true);
-  const [error,      setError]  = useState(null);
+  const { isLoggedIn }              = useAuth();
+  const router                      = useRouter();
+  const [items,      setItems]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(null);
   const [removingId, setRemovingId] = useState(null);
-  const [toast,      setToast]  = useState(null);
+  const [toast,      setToast]      = useState(null);
+
+  // ── Listen for cart updates from anywhere in the app ─────────────────────────
+  useEffect(() => {
+    const handler = ({ items }) => {
+      if (Array.isArray(items)) setItems(items);
+    };
+    EventEmitter.on('cart-updated', handler);
+    return () => EventEmitter.off('cart-updated', handler);
+  }, []);
 
   // ── Load cart on screen focus ────────────────────────────────────────────────
   useFocusEffect(useCallback(() => {
@@ -218,9 +235,8 @@ export default function CartScreen() {
     setError(null);
     fetchCart()
       .then(data => {
-        const loaded = data?.items || data?.data || (Array.isArray(data) ? data : []);
+        const loaded = normalizeCart(data);
         setItems(loaded);
-        // Sync badge count with real server data every time screen is focused
         EventEmitter.emit('cart-updated', { items: loaded });
       })
       .catch(() => setError('Failed to load cart. Please try again.'))
@@ -232,12 +248,10 @@ export default function CartScreen() {
     if (qty < 1) { handleRemove(productId); return; }
     try {
       await updateCartItem(productId, qty);
-      // Update local state first for instant UI feedback
       const updated = items.map(i =>
         getId(i) === productId ? { ...i, quantity: qty } : i
       );
       setItems(updated);
-      // Emit so CartContext badge updates immediately
       EventEmitter.emit('cart-updated', { items: updated });
     } catch {
       setToast({ message: 'Failed to update quantity', type: 'error' });
@@ -251,7 +265,6 @@ export default function CartScreen() {
       await removeFromCart(productId);
       const updated = items.filter(i => getId(i) !== productId);
       setItems(updated);
-      // Emit so CartContext badge updates immediately
       EventEmitter.emit('cart-updated', { items: updated });
       setToast({ message: 'Item removed from cart', type: 'success' });
     } catch {
@@ -307,7 +320,7 @@ export default function CartScreen() {
             setLoading(true);
             fetchCart()
               .then(data => {
-                const loaded = data?.items || [];
+                const loaded = normalizeCart(data);
                 setItems(loaded);
                 EventEmitter.emit('cart-updated', { items: loaded });
               })

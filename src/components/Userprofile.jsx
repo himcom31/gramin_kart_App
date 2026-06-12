@@ -244,7 +244,7 @@ export default function UserProfile() {
         method:  "PUT",
         headers: {
           Authorization:  `Bearer ${token}`,
-          "Content-Type": "multipart/form-data", // ← required in React Native
+          
         },
         body: fd,
       });
