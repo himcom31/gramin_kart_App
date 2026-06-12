@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "GraminKartMobile",
+    "name": "GraminKart",
     "slug": "GraminKartMobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -28,19 +28,16 @@
     "plugins": [
       "expo-router",
       [
-        [
-  "expo-splash-screen",
-  {
-    "backgroundColor": "#ffffff",
-    "android": {
-      "image": "./assets/images/icon.png",
-      "imageWidth": 160
-    }
-  }
-]
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff",
+          "android": {
+            "image": "./assets/images/icon.png",
+            "imageWidth": 160
+          }
+        }
       ],
-      
-       "expo-secure-store",
+      "expo-secure-store",
       [
         "expo-image-picker",
         {
