@@ -1,11 +1,9 @@
 
 
-
-const store = {};
+import * as SecureStore from 'expo-secure-store';
 
 export const Storage = {
-  getItem:    (key)        => store[key] ?? null,
-  setItem:    (key, value) => { store[key] = value; },
-  removeItem: (key)        => { delete store[key]; },
+  getItem:    (key)        => SecureStore.getItemAsync(key),
+  setItem:    (key, value) => SecureStore.setItemAsync(key, value),
+  removeItem: (key)        => SecureStore.deleteItemAsync(key),
 };
-

@@ -1,7 +1,9 @@
 // app/products/[slug].jsx
 // Product Details Screen — Expo Router, slug-based routing
 // Mirrors web ProductDetails.jsx feature-for-feature
+// ✅ BUY NOW: saves product to AsyncStorage as 'buyNowItem', skips cart entirely
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -190,17 +192,12 @@ const Lightbox = ({ images, activeIdx, onClose }) => {
   return (
     <Modal visible animationType="fade" transparent onRequestClose={onClose}>
       <View style={lb.overlay}>
-        {/* Close */}
         <TouchableOpacity onPress={onClose} style={lb.closeBtn}>
           <Text style={{ color: C.white, fontSize: 20, fontWeight: '700' }}>✕</Text>
         </TouchableOpacity>
-
-        {/* Image */}
         <View style={lb.imgWrap}>
           <Image source={{ uri: images[idx] }} style={lb.img} resizeMode="contain" />
         </View>
-
-        {/* Prev / Next */}
         {images.length > 1 && (
           <>
             <TouchableOpacity onPress={prev} style={[lb.navBtn, { left: 12 }]}>
@@ -211,8 +208,6 @@ const Lightbox = ({ images, activeIdx, onClose }) => {
             </TouchableOpacity>
           </>
         )}
-
-        {/* Dots */}
         {images.length > 1 && (
           <View style={lb.dots}>
             {images.map((_, i) => (
@@ -328,7 +323,6 @@ export default function ProductDetailsScreen() {
       setProduct(norm);
       setQty(norm.minQty);
 
-      // load related
       if (norm.catId) {
         fetchRelated(norm.catId, norm.id)
           .then(setRelated)
@@ -357,6 +351,7 @@ export default function ProductDetailsScreen() {
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const showToast = (message, type = 'success') => setToast({ message, type });
 
+  // ── Add to Cart (normal flow — adds to cart, stays on page) ──────────────────
   const handleAddToCart = async (pid = product?.id, qty_ = qty) => {
     if (!isLoggedIn) { router.push('/login'); return; }
     if (!pid || cartLoading) return;
@@ -373,17 +368,36 @@ export default function ProductDetailsScreen() {
     }
   };
 
+  // ── Buy Now (direct checkout — saves to AsyncStorage, does NOT touch cart) ───
+  //
+  // checkout.jsx reads 'buyNowItem' on load.
+  // If present → shows only this item instead of cart.
+  // After order placed → checkout.jsx clears 'buyNowItem'.
+  // ─────────────────────────────────────────────────────────────────────────────
   const handleBuyNow = async () => {
     if (!isLoggedIn) { router.push('/login'); return; }
     if (!product || product.isOOS) return;
+
     setCartLoading(true);
     try {
-      await addToCartAPI(product.id, qty);
-      const cart = await fetchCartAPI();
-      EventEmitter.emit('cart-updated', { items: cart?.items || [] });
+      // Build a cart-item-shaped object so checkout.jsx needs zero changes
+      const buyNowItem = {
+        __isBuyNow: true,          // sentinel flag
+        quantity: qty,
+        product: {
+          id:           product.id,
+          name:         product.name,
+          sellingPrice: product.price,
+          buyingPrice:  product.oldPrice,
+          thumbnail:    product.allImages?.[0] || null,
+          additionalImages: product.allImages || [],
+        },
+      };
+      await AsyncStorage.setItem('buyNowItem', JSON.stringify(buyNowItem));
       router.push('/checkout');
     } catch {
-      showToast('Failed — please try again', 'error');
+      showToast('Something went wrong. Please try again.', 'error');
+    } finally {
       setCartLoading(false);
     }
   };
@@ -480,7 +494,6 @@ export default function ProductDetailsScreen() {
 
         {/* ── Image Gallery ── */}
         <View style={ig.wrap}>
-          {/* Main image */}
           <TouchableOpacity
             activeOpacity={0.95}
             onPress={() => allImages.length > 0 && setLightboxIdx(activeImg)}
@@ -498,7 +511,6 @@ export default function ProductDetailsScreen() {
             </View>
           </TouchableOpacity>
 
-          {/* Thumbnails */}
           {allImages.length > 1 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 14, gap: 8, paddingVertical: 4 }}>
@@ -517,7 +529,6 @@ export default function ProductDetailsScreen() {
         {/* ── Product Info Card ── */}
         <View style={pi.card}>
 
-          {/* Brand + Category row */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
             {!!brandName && (
               <Text style={pi.brand}>{brandName.toUpperCase()}</Text>
@@ -529,15 +540,12 @@ export default function ProductDetailsScreen() {
             )}
           </View>
 
-          {/* Product name */}
           <Text style={pi.name}>{product.name}</Text>
 
-          {/* Short description */}
           {!!product.shortDescription && (
             <Text style={pi.shortDesc}>{product.shortDescription}</Text>
           )}
 
-          {/* Rating */}
           {(product.averageRating || product.reviewCount) ? (
             <View style={{ marginBottom: 12 }}>
               <StarRating rating={product.averageRating || 0} count={product.reviewCount || 0} />
@@ -546,7 +554,6 @@ export default function ProductDetailsScreen() {
 
           <View style={pi.divider} />
 
-          {/* Price */}
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
             <Text style={pi.price}>₹{price.toFixed(2)}</Text>
             {oldPrice > price && (
@@ -559,7 +566,6 @@ export default function ProductDetailsScreen() {
             )}
           </View>
 
-          {/* Stock badge */}
           <View style={{ marginBottom: 14 }}>
             {isOOS ? (
               <View style={[pi.stockBadge, { backgroundColor: C.redLight, borderColor: C.redBorder }]}>
@@ -576,7 +582,6 @@ export default function ProductDetailsScreen() {
             )}
           </View>
 
-          {/* Unit + SKU */}
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
             {!!product.unit && (
               <View style={pi.metaBadge}>
@@ -592,7 +597,6 @@ export default function ProductDetailsScreen() {
 
           <View style={pi.divider} />
 
-          {/* Quantity selector */}
           {!isOOS && (
             <View style={{ marginBottom: 16 }}>
               <Text style={pi.sectionLabel}>QUANTITY</Text>
@@ -624,7 +628,6 @@ export default function ProductDetailsScreen() {
             </View>
           )}
 
-          {/* Attributes / Specifications */}
           {product.attributes?.length > 0 && (
             <>
               <View style={pi.divider} />
@@ -640,7 +643,6 @@ export default function ProductDetailsScreen() {
           )}
         </View>
 
-        {/* ── Description card ── */}
         {!!product.description && (
           <View style={[pi.card, { marginTop: 0 }]}>
             <Text style={pi.sectionTitle}>About This Product</Text>
@@ -648,7 +650,6 @@ export default function ProductDetailsScreen() {
           </View>
         )}
 
-        {/* ── Related Products ── */}
         {related.length > 0 && (
           <View style={{ paddingHorizontal: 14, paddingTop: 8 }}>
             <Text style={pi.sectionTitle}>Related Products</Text>
@@ -681,16 +682,14 @@ export default function ProductDetailsScreen() {
           onPress={handleBuyNow}
           disabled={isOOS || cartLoading}
           style={[ft.buyBtn, (isOOS || cartLoading) && { opacity: 0.6 }]}>
-          <Text style={ft.buyBtnTxt}>{isOOS ? 'Unavailable' : 'Buy Now'}</Text>
+          <Text style={ft.buyBtnTxt}>{isOOS ? 'Unavailable' : 'Buy Now ⚡'}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Lightbox */}
       {lightboxIdx !== null && (
         <Lightbox images={allImages} activeIdx={lightboxIdx} onClose={() => setLightboxIdx(null)} />
       )}
 
-      {/* Toast */}
       {toast && (
         <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />
       )}

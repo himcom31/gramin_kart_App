@@ -20,38 +20,42 @@ const getToken = () => store.getItem("userToken");
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
 const addToCart = async (productId) => {
+  const token = await getToken();
   const res = await fetch(`${API_URL}/api/cart/add`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ productId, quantity: 1 }),
   });
   return res.json();
 };
 
 const fetchCart = async () => {
+  const token = await getToken();
   const res = await fetch(`${API_URL}/api/cart`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
+    headers: { Authorization: `Bearer ${token}` },
   });
   return res.json();
 };
 
 const toggleWishlist = async (productId, isWished) => {
+  const token = await getToken();
   if (isWished) {
     return fetch(`${API_URL}/api/wishlist/remove/${productId}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${getToken()}` },
+      headers: { Authorization: `Bearer ${token}` },
     }).then(r => r.json());
   }
   return fetch(`${API_URL}/api/wishlist/add`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ productId }),
   }).then(r => r.json());
 };
 
 const fetchWishlist = async () => {
+  const token = await getToken();
   return fetch(`${API_URL}/api/wishlist`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
+    headers: { Authorization: `Bearer ${token}` },
   }).then(r => r.json());
 };
 
@@ -71,10 +75,8 @@ const normalise = (product) => {
   const isOutOfStock = stock === 0;
   const isLowStock   = stock > 0 && stock <= 10;
   const unit    = product.unit || product.weight || product.unitLabel || "";
-  const navSlug = product.slug || product.id || product._id || product.productId || null; // ← updated
-
+  const navSlug = product.slug || product.id || product._id || product.productId || null;
   const rating  = Number(product.rating || product.averageRating || 4);
-
 
   return { displayPrice, strikePrice, discountPct, image, name, category,
            stock, isOutOfStock, isLowStock, unit, navSlug, rating };
@@ -99,42 +101,46 @@ const ProductCard = ({ product, onUnwish }) => {
   const { displayPrice, strikePrice, discountPct, image, name, category,
           stock, isOutOfStock, isLowStock, unit, navSlug, rating } = normalise(product);
 
-
-  const isLoggedIn = () => !!getToken();
-
+  // ── Load wishlist state on mount ─────────────────────────────────────────
   useEffect(() => {
-    if (!isLoggedIn()) return;
-    fetchWishlist()
-      .then(data => {
-        const ids = (data.products || []).map(p => p.id || p);
-        setWished(ids.includes(product.id));
-      })
-      .catch(() => {});
+    (async () => {
+      const token = await getToken();
+      if (!token) return;
+      fetchWishlist()
+        .then(data => {
+          const ids = (data.products || []).map(p => p.id || p);
+          setWished(ids.includes(product.id));
+        })
+        .catch(() => {});
+    })();
   }, [product.id]);
 
+  // ── Add to cart ──────────────────────────────────────────────────────────
   const handleAddToCart = async () => {
-    if (!isLoggedIn() || cartLoading) return;
+    const token = await getToken();
+    if (!token) { router.push("/login"); return; }
+    if (cartLoading) return;
     setCartLoading(true);
     try {
       await addToCart(product.id);
       setAdded(true);
       setTimeout(() => setAdded(false), 1800);
-      // Fetch updated cart and emit so CartContext badge updates immediately
       const cart = await fetchCart();
-      EventEmitter.emit('cart-updated', { items: cart?.items || [] });
+      EventEmitter.emit("cart-updated", { items: cart?.items || [] });
     } catch {}
     finally { setCartLoading(false); }
   };
 
+  // ── Toggle wishlist ──────────────────────────────────────────────────────
   const handleWishlist = async () => {
-    if (!isLoggedIn()) return;
+    const token = await getToken();
+    if (!token) { router.push("/login"); return; }
     try {
       const res = await toggleWishlist(product.id, wished);
       const nowWished = !wished;
       setWished(nowWished);
       if (!nowWished && typeof onUnwish === "function") onUnwish(product.id);
-      // Emit wishlist update so badge in tab bar stays in sync
-      EventEmitter.emit('wishlist-updated', { products: res?.products || [] });
+      EventEmitter.emit("wishlist-updated", { products: res?.products || [] });
     } catch {}
   };
 
@@ -144,7 +150,6 @@ const ProductCard = ({ product, onUnwish }) => {
     <TouchableOpacity
       activeOpacity={0.92}
       onPress={() => navSlug && router.push(`/product/${navSlug}`)}
-
       style={styles.card}
     >
       <View style={[styles.imgWrap, { height: imgHeight }]}>

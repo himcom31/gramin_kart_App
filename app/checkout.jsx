@@ -20,6 +20,7 @@ const RAZORPAY_MODE = 'native';
 
 // ─── Imports ──────────────────────────────────────────────────────────────────
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -40,42 +41,31 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview'; // used in EXPO GO mode only
+import { WebView } from 'react-native-webview';
 import { EventEmitter } from '../src/api/EventEmitter';
 import { Storage } from '../src/api/storage';
 
-// ── DEV BUILD ONLY ────────────────────────────────────────────────────────────
-// When RAZORPAY_MODE === 'native', this import is used.
-// In Expo Go mode it is never called so no crash occurs even if the package
-// is not installed yet.
-//
-// TO ACTIVATE: uncomment the line below when building with native SDK
-// ─────────────────────────────────────────────────────────────────────────────
-
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const getToken = () => Storage.getItem('userToken');
-const authHdr = () => ({
+const authHdr = async () => ({        // ← make async
   'Content-Type': 'application/json',
-  Authorization: `Bearer ${getToken()}`,
+  Authorization: `Bearer ${await getToken()}`,  // ← await
 });
-
 // ─── API helpers ──────────────────────────────────────────────────────────────
 const api = {
-  cart:          ()    => fetch(`${API_URL}/api/cart`,              { headers: authHdr() }).then(r => r.json()),
-  addresses:     ()    => fetch(`${API_URL}/api/address`,           { headers: authHdr() }).then(r => r.json()),
+  cart:          ()    => authHdr().then(h => fetch(`${API_URL}/api/cart`,              { headers: h }).then(r => r.json())),
+  addresses:     ()    => authHdr().then(h => fetch(`${API_URL}/api/address`,           { headers: h }).then(r => r.json())),
   gateways:      ()    => fetch(`${API_URL}/api/payment/active`).then(r => r.json()),
   taxRate:       ()    => fetch(`${API_URL}/api/taxes/active-rate`).then(r => r.json()),
   deliveryRate:  qty   => fetch(`${API_URL}/api/delivery/charge-for-qty?qty=${qty}`).then(r => r.json()),
-  coupon:        body  => fetch(`${API_URL}/api/coupon/validate`,   { method: 'POST', headers: authHdr(), body: JSON.stringify(body) }).then(r => r.json()),
-  placeOrder:    body  => fetch(`${API_URL}/api/orders/place`,      { method: 'POST', headers: authHdr(), body: JSON.stringify(body) }).then(r => r.json()),
-  razorpayInit:  body  => fetch(`${API_URL}/api/payment/process`,   { method: 'POST', headers: authHdr(), body: JSON.stringify(body) }).then(r => r.json()),
-  razorpayVerify:body  => fetch(`${API_URL}/api/payment/verify`,    { method: 'POST', headers: authHdr(), body: JSON.stringify(body) }).then(r => r.json()),
+  coupon:        body  => authHdr().then(h => fetch(`${API_URL}/api/coupon/validate`,   { method: 'POST', headers: h, body: JSON.stringify(body) }).then(r => r.json())),
+  placeOrder:    body  => authHdr().then(h => fetch(`${API_URL}/api/orders/place`,      { method: 'POST', headers: h, body: JSON.stringify(body) }).then(r => r.json())),
+  razorpayInit:  body  => authHdr().then(h => fetch(`${API_URL}/api/payment/process`,   { method: 'POST', headers: h, body: JSON.stringify(body) }).then(r => r.json())),
+  razorpayVerify:body  => authHdr().then(h => fetch(`${API_URL}/api/payment/verify`,    { method: 'POST', headers: h, body: JSON.stringify(body) }).then(r => r.json())),
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RAZORPAY WEBVIEW MODE (Expo Go)
-// Builds a self-contained HTML page that loads Razorpay checkout.js inside a
-// WebView modal. On success/cancel it posts a JSON message back to RN.
+// RAZORPAY WEBVIEW HTML
 // ─────────────────────────────────────────────────────────────────────────────
 const buildRazorpayHtml = ({ key, amount, order_id, customerName, contact }) => `
 <!DOCTYPE html><html>
@@ -159,13 +149,13 @@ const buildRazorpayHtml = ({ key, amount, order_id, customerName, contact }) => 
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SHARED: verify + place order after Razorpay payment succeeds
-// Called from BOTH webview mode and native mode
 // ─────────────────────────────────────────────────────────────────────────────
 const verifyAndPlace = async ({
   razorpay_order_id, razorpay_payment_id, razorpay_signature,
   selectedAddressId, note, couponApplied, couponDiscount, shippingCharge, tax,
   total, paymentMethod,
   setError, setPlacing, setOrderSuccess,
+  isBuyNow,
 }) => {
   const verify = await api.razorpayVerify({
     razorpay_order_id, razorpay_payment_id, razorpay_signature,
@@ -184,6 +174,8 @@ const verifyAndPlace = async ({
     razorpayPaymentId: razorpay_payment_id,
   });
   if (orderRes.success) {
+    // ✅ If this was a Buy Now order, clear the temporary item
+    if (isBuyNow) await AsyncStorage.removeItem('buyNowItem');
     EventEmitter.emit('cart-updated', { items: [] });
     setOrderSuccess({ ...orderRes.order, total, paymentMethod });
   } else {
@@ -268,13 +260,12 @@ function AddressModal({ visible, addresses, selectedId, onSelect, onClose }) {
   );
 }
 
-// ─── Razorpay WebView Modal (EXPO GO mode only) ───────────────────────────────
+// ─── Razorpay WebView Modal ───────────────────────────────────────────────────
 function RazorpayWebViewModal({ visible, html, onMessage, onClose }) {
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#f4f6f4' }}>
-        {/* Header */}
         <View style={s.rzpHeader}>
           <TouchableOpacity onPress={onClose} style={s.rzpCloseBtn}>
             <Text style={s.rzpCloseX}>✕</Text>
@@ -282,7 +273,6 @@ function RazorpayWebViewModal({ visible, html, onMessage, onClose }) {
           <Text style={s.rzpHeaderTitle}>Razorpay Payment</Text>
           <View style={{ width: 36 }} />
         </View>
-        {/* WebView */}
         <WebView
           style={{ flex: 1 }}
           source={{ html }}
@@ -435,23 +425,45 @@ export default function CheckoutScreen() {
   const [orderSuccess,     setOrderSuccess]     = useState(null);
   const [error,            setError]            = useState('');
 
-  // ── Razorpay WebView state (EXPO GO mode) ──────────────────────────────────
-  const [rzpWebViewHtml,   setRzpWebViewHtml]   = useState(null); // null = closed
+  // ── Buy Now flag — set when user came via "Buy Now" button ─────────────────
+  // When true: cartItems holds only the 1 buy-now item, cart API is never used
+  const [isBuyNow,         setIsBuyNow]         = useState(false);
+
+  // ── Razorpay WebView state ─────────────────────────────────────────────────
+  const [rzpWebViewHtml,   setRzpWebViewHtml]   = useState(null);
 
   // ── Load ───────────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [cartRes, addrRes, gwRes, taxRes] = await Promise.allSettled([
-        api.cart(), api.addresses(), api.gateways(), api.taxRate(),
-      ]);
-      let qty = 1;
-      if (cartRes.status === 'fulfilled') {
-        const items = cartRes.value?.items || [];
-        setCartItems(items);
+      // ─────────────────────────────────────────────────────────────────────
+      // CHECK FOR BUY NOW ITEM FIRST
+      // If present, use it instead of the cart. Cart is left untouched.
+      // ─────────────────────────────────────────────────────────────────────
+      let buyNowRaw = null;
+      try { buyNowRaw = await AsyncStorage.getItem('buyNowItem'); } catch {}
+
+      let items = [];
+      if (buyNowRaw) {
+        const buyNowItem = JSON.parse(buyNowRaw);
+        items = [buyNowItem];
+        setIsBuyNow(true);
+      } else {
+        // Normal cart flow
+        const cartRes = await api.cart();
+        items = cartRes?.items || [];
         if (items.length === 0) { router.replace('/(tabs)/cart'); return; }
-        qty = items.reduce((s, i) => s + (i.quantity || 1), 0);
+        setIsBuyNow(false);
       }
+
+      setCartItems(items);
+      const qty = items.reduce((s, i) => s + (i.quantity || 1), 0);
+
+      // Load addresses, gateways, tax in parallel
+      const [addrRes, gwRes, taxRes] = await Promise.allSettled([
+        api.addresses(), api.gateways(), api.taxRate(),
+      ]);
+
       if (addrRes.status === 'fulfilled') {
         const addrs = addrRes.value?.addresses || [];
         setAddresses(addrs);
@@ -463,6 +475,7 @@ export default function CheckoutScreen() {
         setTaxRate(taxRes.value.totalPercentage || 0);
         setTaxList(taxRes.value.taxes || []);
       }
+
       try {
         const d = await api.deliveryRate(qty);
         if (d?.success) setShippingCharge(Number(d.charge ?? 0));
@@ -506,6 +519,7 @@ export default function CheckoutScreen() {
     shippingCharge, tax, total,
     paymentMethod: 'Razorpay',
     setError, setPlacing, setOrderSuccess,
+    isBuyNow, // ← passed through so verifyAndPlace can clear AsyncStorage
   };
 
   // ── Coupon ─────────────────────────────────────────────────────────────────
@@ -533,16 +547,12 @@ export default function CheckoutScreen() {
       // ── RAZORPAY ──────────────────────────────────────────────────────────
       if (paymentMethod === 'Razorpay') {
 
-        // ── STEP 1: Init order on backend (same for both modes) ─────────────
         const rzpData = await api.razorpayInit({ amount: total });
         if (!rzpData.success) {
           setError(rzpData.message || 'Payment initialisation failed');
           setPlacing(false); return;
         }
 
-        // ════════════════════════════════════════════════════════════════════
-        // EXPO GO MODE  — WebView with Razorpay checkout.js
-        // ════════════════════════════════════════════════════════════════════
         if (RAZORPAY_MODE === 'webview') {
           const html = buildRazorpayHtml({
             key:          rzpData.key_id,
@@ -552,45 +562,54 @@ export default function CheckoutScreen() {
             contact:      selectedAddress?.phone || '',
           });
           setRzpWebViewHtml(html);
-          // placing stays true — resolved in handleWebViewMessage callback
           return;
         }
 
-        // ════════════════════════════════════════════════════════════════════
-        // DEV BUILD MODE — react-native-razorpay native SDK
-        //
-        // TO ACTIVATE:
-        //   1. npm install react-native-razorpay && npx expo run:android
-        //   2. Uncomment  import RazorpayCheckout  at the top of this file
-        //   3. Change RAZORPAY_MODE to 'native'
-        // ════════════════════════════════════════════════════════════════════
         if (RAZORPAY_MODE === 'native') {
-          // eslint-disable-next-line no-undef
-          const RazorpayCheckout = require(/* @vite-ignore */ 'react-native-razorpay' + '').default;
+  const RazorpayCheckout = require('react-native-razorpay').default;
+  try {
+    const response = await RazorpayCheckout.open({
+      description:  'Order Payment',
+      currency:     'INR',
+      key:          rzpData.key_id,
+      amount:       rzpData.amount,
+      order_id:     rzpData.order_id,
+      name:         'Gramin Kart',
+      prefill:      { name: selectedAddress?.name || '', contact: selectedAddress?.phone || '' },
+      theme:        { color: '#16a34a' },
+    });
 
-          try {
-            const response = await RazorpayCheckout.open({
-              description:  'Order Payment',
-              currency:     'INR',
-              key:          rzpData.key_id,
-              amount:       rzpData.amount,
-              order_id:     rzpData.order_id,
-              name:         'Gramin Kart',
-              prefill:      { name: selectedAddress?.name || '', contact: selectedAddress?.phone || '' },
-              theme:        { color: '#16a34a' },
-            });
-            await verifyAndPlace({ ...response, ...sharedOrderArgs });
-          } catch (e) {
-            // code 0 = user dismissed sheet — silent; anything else = real error
-            if (e?.code !== 0 && e?.code !== 'PAYMENT_CANCELLED') {
-              setError(e?.description || 'Razorpay payment failed. Please try again.');
-            }
-            setPlacing(false);
-          }
-          return;
-        }
+    // ✅ Only reach here if payment genuinely succeeded
+    // response contains razorpay_order_id, razorpay_payment_id, razorpay_signature
+    if (!response?.razorpay_payment_id || !response?.razorpay_signature) {
+      // Missing signature = not a real success, treat as cancel
+      setError('Payment was not completed. Please try again.');
+      setPlacing(false);
+      return;
+    }
 
-        return; // safety fallthrough
+    await verifyAndPlace({ ...response, ...sharedOrderArgs });
+
+  } catch (e) {
+    // ✅ Razorpay throws on cancel/failure — do NOT place order here
+    setPlacing(false);
+
+    const code = e?.code ?? e?.error?.code;
+    const desc = e?.description ?? e?.error?.description ?? '';
+
+    // Code 0 = user cancelled, PAYMENT_CANCELLED = explicit cancel
+    if (code === 0 || code === 'PAYMENT_CANCELLED' || desc.toLowerCase().includes('cancel')) {
+      // Silent — user chose to cancel, no error message needed
+      return;
+    }
+
+    // Genuine payment failure
+    setError(desc || 'Payment failed. Please try again.');
+  }
+  return;
+}
+
+        return;
       }
 
       // ── COD / Card ────────────────────────────────────────────────────────
@@ -602,6 +621,8 @@ export default function CheckoutScreen() {
         couponDiscount, shippingCharge, tax,
       });
       if (orderRes.success) {
+        // ✅ Clear buyNowItem if this was a Buy Now order
+        if (isBuyNow) await AsyncStorage.removeItem('buyNowItem');
         EventEmitter.emit('cart-updated', { items: [] });
         setOrderSuccess({ ...orderRes.order, total, paymentMethod });
       } else {
@@ -614,13 +635,12 @@ export default function CheckoutScreen() {
     }
   };
 
-  // ── WebView message handler (EXPO GO Razorpay) ─────────────────────────────
+  // ── WebView message handler ────────────────────────────────────────────────
   const handleWebViewMessage = useCallback(async (event) => {
     let msg;
     try { msg = JSON.parse(event.nativeEvent.data); } catch { return; }
 
     if (msg.type === 'CANCELLED') {
-      // User closed Razorpay sheet — dismiss modal, reset placing
       setRzpWebViewHtml(null);
       setPlacing(false);
       return;
@@ -635,7 +655,6 @@ export default function CheckoutScreen() {
 
     if (msg.type === 'SUCCESS') {
       setRzpWebViewHtml(null);
-      // placing stays true while we verify + place
       try {
         await verifyAndPlace({
           razorpay_order_id:   msg.razorpay_order_id,
@@ -650,7 +669,6 @@ export default function CheckoutScreen() {
     }
   }, [sharedOrderArgs]);
 
-  // ── Shared summary + coupon props ──────────────────────────────────────────
   const summaryRowsProps = { subtotal, couponDiscount, taxableAmount, shippingCharge, deliveryLoading, taxRate, taxList, tax, total };
   const couponProps      = { couponApplied, couponCode, setCouponCode, couponError, setCouponError, couponLoading, handleCouponApply, removeCoupon, couponDiscount };
 
@@ -666,12 +684,26 @@ export default function CheckoutScreen() {
 
       {/* Top bar */}
       <View style={s.topBar}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={async () => {
+            // ✅ If user goes back from Buy Now checkout, clear the item
+            if (isBuyNow) await AsyncStorage.removeItem('buyNowItem');
+            router.back();
+          }}
+          style={s.backBtn}
+          activeOpacity={0.7}
+        >
           <Text style={s.backArrow}>←</Text>
-          <Text style={s.backLabel}>Cart</Text>
+          <Text style={s.backLabel}>{isBuyNow ? 'Product' : 'Cart'}</Text>
         </TouchableOpacity>
         <Text style={s.topBarTitle}>Checkout</Text>
-        <View style={{ width: 60 }} />
+        {/* Buy Now badge */}
+        {isBuyNow && (
+          <View style={s.buyNowBadge}>
+            <Text style={s.buyNowBadgeTxt}>⚡ Buy Now</Text>
+          </View>
+        )}
+        {!isBuyNow && <View style={{ width: 60 }} />}
       </View>
 
       {loading ? (
@@ -691,10 +723,12 @@ export default function CheckoutScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Expanded cart items */}
+            {/* Expanded cart / buy-now items */}
             {showItems && (
               <View style={s.card}>
-                <Text style={s.cardHeading}>📦 Order Items</Text>
+                <Text style={s.cardHeading}>
+                  {isBuyNow ? '⚡ Buying Now' : '📦 Order Items'}
+                </Text>
                 {cartItems.map((item, i) => {
                   const p     = item.product || item;
                   const price = Number(p.sellingPrice ?? p.price ?? p.buyingPrice ?? 0);
@@ -778,7 +812,6 @@ export default function CheckoutScreen() {
               <CouponSection {...couponProps} />
             </View>
 
-            {/* Error */}
             {!!error && (
               <View style={s.errorBox}><Text style={s.errorTxt}>⚠ {error}</Text></View>
             )}
@@ -806,7 +839,9 @@ export default function CheckoutScreen() {
             >
               {placing
                 ? <ActivityIndicator size="small" color="#fff" />
-                : <Text style={s.placeOrderBtnTxt}>Place Order</Text>}
+                : <Text style={s.placeOrderBtnTxt}>
+                    {isBuyNow ? '⚡ Place Order' : 'Place Order'}
+                  </Text>}
             </TouchableOpacity>
           </View>
         </View>
@@ -821,8 +856,7 @@ export default function CheckoutScreen() {
         onClose={() => setShowAddrModal(false)}
       />
 
-      {/* ── Razorpay WebView modal (EXPO GO mode only) ── */}
-      {/* In DEV BUILD mode this modal never opens (rzpWebViewHtml stays null) */}
+      {/* Razorpay WebView modal */}
       <RazorpayWebViewModal
         visible={!!rzpWebViewHtml}
         html={rzpWebViewHtml || ''}
@@ -845,6 +879,10 @@ const s = StyleSheet.create({
   backArrow:   { fontSize: 18, color: G, fontWeight: '700' },
   backLabel:   { fontSize: 13, color: G, fontWeight: '700' },
   topBarTitle: { fontSize: 16, fontWeight: '800', color: DARK },
+
+  // ✅ Buy Now badge in top bar
+  buyNowBadge:    { backgroundColor: '#fef9c3', borderWidth: 1.5, borderColor: '#fde047', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  buyNowBadgeTxt: { fontSize: 11, fontWeight: '800', color: '#854d0e' },
 
   scrollContent: { padding: 14 },
 
@@ -941,7 +979,6 @@ const s = StyleSheet.create({
   addrCard:      { borderWidth: 2, borderColor: '#e5e7eb', borderRadius: 14, padding: 14, backgroundColor: '#fff' },
   addrCardSelected: { borderColor: G, backgroundColor: '#f0fdf4' },
 
-  // Razorpay WebView modal
   rzpHeader:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   rzpCloseBtn:    { width: 36, height: 36, borderRadius: 18, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
   rzpCloseX:      { fontSize: 14, color: '#6b7280', fontWeight: '700' },

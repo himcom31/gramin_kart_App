@@ -1,7 +1,6 @@
 // components/UserProfile.jsx  — React Native (Expo Router)
-// Fix: replaced @react-native-picker/picker (needs native linking) with
-//      a pure-RN modal-based SelectField that works in Expo Go / managed builds.
 
+import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -52,7 +51,7 @@ const ts = StyleSheet.create({
   txt: { color: "#fff", fontSize: 13, fontWeight: "600" },
 });
 
-// ─── Modal-based Select (replaces @react-native-picker/picker) ────────────────
+// ─── Modal-based Select ───────────────────────────────────────────────────────
 const SelectField = ({ value, placeholder, options, onChange }) => {
   const [visible, setVisible] = useState(false);
   const label = value || placeholder;
@@ -125,8 +124,8 @@ const sm = StyleSheet.create({
     paddingVertical: 14, paddingHorizontal: 6,
     borderBottomWidth: 1, borderBottomColor: "#f1f5f9",
   },
-  optionSelected: { backgroundColor: "#f0fdf4" },
-  optionTxt:      { fontSize: 14, color: "#1e293b" },
+  optionSelected:    { backgroundColor: "#f0fdf4" },
+  optionTxt:         { fontSize: 14, color: "#1e293b" },
   optionTxtSelected: { fontWeight: "700", color: "#16a34a" },
   cancelBtn: {
     marginTop: 10, backgroundColor: "#f1f5f9",
@@ -148,7 +147,7 @@ export default function UserProfile() {
   const [loading,  setLoading]  = useState(true);
   const [saving,   setSaving]   = useState(false);
   const [toast,    setToast]    = useState({ msg: "", type: "success" });
-  // const [localImg, setLocalImg] = useState(null);
+  const [localImg, setLocalImg] = useState(null); // ← restored
 
   const [form, setForm] = useState({
     fullName: "", country: "", phone: "", gender: "",
@@ -160,7 +159,7 @@ export default function UserProfile() {
     setTimeout(() => setToast({ msg: "", type: "success" }), 3000);
   };
 
-  // ── Load profile ──────────────────────────────────────────────────────────
+  // ── Load profile ────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -189,22 +188,39 @@ export default function UserProfile() {
     })();
   }, []);
 
-  // ── Pick image via DocumentPicker (works in Expo Go, no native module needed)
-  // const pickImage = async () => {
-  //   try {
-  //     const result = await DocumentPicker.getDocumentAsync({
-  //       type: "image/*",
-  //       copyToCacheDirectory: true,
-  //     });
-  //     if (result.canceled || result.type === "cancel") return;
-  //     const uri = result.assets ? result.assets[0].uri : result.uri;
-  //     if (uri) setLocalImg(uri);
-  //   } catch {
-  //     showToast("Image picker unavailable", "error");
-  //   }
-  // };
+  // ── Pick image via expo-image-picker ────────────────────────────────────────
+  const pickImage = async () => {
+  try {
+    const { status: existingStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
+    let finalStatus = existingStatus;
 
-  // ── Save profile ──────────────────────────────────────────────────────────
+    if (existingStatus !== "granted") {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== "granted") {
+      showToast("Gallery permission is required to change photo", "error");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],   // ← updated, MediaTypeOptions is deprecated
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      setLocalImg(result.assets[0].uri);
+    }
+  } catch (e) {
+    console.error("Image picker error:", e);
+    showToast("Image picker unavailable", "error");
+  }
+};
+
+  // ── Save profile ────────────────────────────────────────────────────────────
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -215,37 +231,40 @@ export default function UserProfile() {
       fd.append("phone",       form.phone);
       fd.append("gender",      form.gender);
       fd.append("dateOfBirth", form.dateOfBirth);
-      // if (localImg) {
-      //   const filename = localImg.split("/").pop();
-      //   const match    = /\.(\w+)$/.exec(filename);
-      //   const type     = match ? `image/${match[1]}` : "image/jpeg";
-      //   fd.append("image", { uri: localImg, name: filename, type });
-      // }
-      const res  = await fetch(`${API_BASE}/update-profile`, {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
+
+      // ← Append image if user picked one
+      if (localImg) {
+        const filename = localImg.split("/").pop();
+        const match    = /\.(\w+)$/.exec(filename);
+        const type     = match ? `image/${match[1].toLowerCase()}` : "image/jpeg";
+        fd.append("image", { uri: localImg, name: filename, type });
+      }
+
+      const res = await fetch(`${API_BASE}/update-profile`, {
+        method:  "PUT",
+        headers: {
+          Authorization:  `Bearer ${token}`,
+          "Content-Type": "multipart/form-data", // ← required in React Native
+        },
         body: fd,
       });
       const data = await res.json();
-      if (!data.success) return showToast(data.message, "error");
+      if (!data.success) return showToast(data.message || "Update failed", "error");
       if (data.user?.avatar) setForm(p => ({ ...p, avatar: data.user.avatar }));
-      setLocalImg(null);
+      setLocalImg(null); // clear local preview after successful upload
       showToast("✓ Profile updated successfully!");
-    } catch {
+    } catch (e) {
+      console.error("Profile save error:", e);
       showToast("Network error", "error");
     } finally {
       setSaving(false);
     }
   };
 
-  const initials = form.fullName
+  const initials  = form.fullName
     ? form.fullName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
     : "U";
-
-  // const avatarUri = localImg || form.avatar || null;
-const avatarUri = form.avatar || null;
-
-
+  const avatarUri = localImg || form.avatar || null; // local preview takes priority
 
   if (loading) {
     return (
@@ -273,17 +292,26 @@ const avatarUri = form.avatar || null;
         {/* Avatar Card */}
         <View style={s.card}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-            <View style={s.avatarRing}>
-              {avatarUri
-                ? <Image source={{ uri: avatarUri }} style={s.avatarImg} />
-                : <Text style={s.avatarInitials}>{initials}</Text>}
-            </View>
+            
+<TouchableOpacity onPress={pickImage} activeOpacity={0.8}>
+  <View style={{ position: "relative" }}>   
+    <View style={s.avatarRing}>
+      {avatarUri
+        ? <Image source={{ uri: avatarUri }} style={s.avatarImg} />
+        : <Text style={s.avatarInitials}>{initials}</Text>}
+    </View>
+    <View style={s.cameraOverlay}>
+      <Text style={{ fontSize: 12 }}>📷</Text>
+    </View>
+  </View>
+</TouchableOpacity>
+
             <View style={{ flex: 1 }}>
               <Text style={s.avatarName} numberOfLines={1}>{form.fullName || "Your Name"}</Text>
               <Text style={s.avatarEmail} numberOfLines={1}>{form.email || "email@example.com"}</Text>
-              {/* <TouchableOpacity onPress={pickImage} style={s.changePhotoBtn}>
+              <TouchableOpacity onPress={pickImage} style={s.changePhotoBtn}>
                 <Text style={s.changePhotoTxt}>📷 Change Photo</Text>
-              </TouchableOpacity> */}
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -388,27 +416,31 @@ const s = StyleSheet.create({
     width: 80, height: 80, borderRadius: 40,
     borderWidth: 3, borderColor: "#4ade80",
     alignItems: "center", justifyContent: "center",
-    backgroundColor: "#f0fdf4", overflow: "hidden",
+    backgroundColor: "#f0fdf4", 
   },
-  avatarImg:       { width: "100%", height: "100%", borderRadius: 40 },
-  avatarInitials:  { fontSize: 24, fontWeight: "700", color: "#16a34a" },
-  avatarName:      { fontSize: 16, fontWeight: "700", color: "#0f172a" },
-  avatarEmail:     { fontSize: 12, color: "#64748b", marginTop: 2 },
-  changePhotoBtn:  {
+  avatarImg:      { width: "100%", height: "100%", borderRadius: 40 ,overflow: "hidden",},
+  avatarInitials: { fontSize: 24, fontWeight: "700", color: "#16a34a" },
+  avatarName:     { fontSize: 16, fontWeight: "700", color: "#0f172a" },
+  avatarEmail:    { fontSize: 12, color: "#64748b", marginTop: 2 },
+  cameraOverlay: {
+    position: "absolute", bottom: 0, right: 0,
+    backgroundColor: "#fff", borderRadius: 10,
+    width: 22, height: 22, alignItems: "center", justifyContent: "center",
+    shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 4, elevation: 3,
+  },
+  changePhotoBtn: {
     marginTop: 10, backgroundColor: "#0f172a", borderRadius: 9,
     paddingHorizontal: 14, paddingVertical: 8, alignSelf: "flex-start",
   },
-  changePhotoTxt:  { color: "#fff", fontSize: 12, fontWeight: "600" },
-  sectionLabel:    { fontSize: 11, fontWeight: "700", color: "#16a34a", letterSpacing: 1, marginBottom: 16 },
-  fieldLabel:      { fontSize: 11, fontWeight: "700", color: "#64748b", letterSpacing: 0.5, marginBottom: 6 },
+  changePhotoTxt: { color: "#fff", fontSize: 12, fontWeight: "600" },
+  sectionLabel:   { fontSize: 11, fontWeight: "700", color: "#16a34a", letterSpacing: 1, marginBottom: 16 },
+  fieldLabel:     { fontSize: 11, fontWeight: "700", color: "#64748b", letterSpacing: 0.5, marginBottom: 6 },
   input: {
     borderWidth: 1.5, borderColor: "#e2e8f0", borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 14, color: "#1e293b", backgroundColor: "#fff",
   },
-  selectTrigger: {
-    flexDirection: "row", alignItems: "center",
-  },
+  selectTrigger: { flexDirection: "row", alignItems: "center" },
   phonePrefix: {
     paddingHorizontal: 10, paddingVertical: 12,
     backgroundColor: "#f1f5f9",

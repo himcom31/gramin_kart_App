@@ -1,23 +1,34 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { Storage } from '../api/storage';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   // undefined = still initialising, null = logged out, string = logged in
-  const [userToken, setUserToken] = useState(() => Storage.getItem('userToken') ?? null);
+  const [userToken, setUserToken] = useState(undefined);
   const [user,      setUser]      = useState(null);
 
-  const login = (token, userData = null) => {
-    Storage.setItem('userToken', token);
+  // ── Rehydrate token on app start ──────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await Storage.getItem('userToken');
+        setUserToken(token ?? null);
+      } catch {
+        setUserToken(null);
+      }
+    })();
+  }, []);
+
+  const login = async (token, userData = null) => {
+    await Storage.setItem('userToken', token);
     setUserToken(token);
     setUser(userData);
   };
 
-  const logout = () => {
-    // Clear every key you ever write on login
-    Storage.removeItem('userToken');
-    Storage.removeItem('userData');
+  const logout = async () => {
+    await Storage.removeItem('userToken');
+    await Storage.removeItem('userData');
     setUserToken(null);
     setUser(null);
   };
@@ -29,7 +40,8 @@ export const AuthProvider = ({ children }) => {
       setUser,
       login,
       logout,
-      isLoggedIn: !!userToken,
+      isLoggedIn:      !!userToken,
+      isLoading:  userToken === undefined, // ← renamed to match _layout.jsx
     }}>
       {children}
     </AuthContext.Provider>
