@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { fetchCart, fetchWishlist } from '../api/cartWishlist';
 import { EventEmitter } from '../api/EventEmitter';
 import { useAuth } from './AuthContext';
@@ -22,15 +22,22 @@ export const CartProvider = ({ children }) => {
   }, [isLoggedIn]);
 
   useEffect(() => {
-    const unsubCart = EventEmitter.on('cart-updated', (data) => {
-      const total = (data?.items || []).reduce((sum, i) => sum + (i.quantity || 0), 0);
-      setCartCount(total);
-    });
-    const unsubWish = EventEmitter.on('wishlist-updated', (data) => {
-      setWishlistCount((data?.products || []).length);
-    });
-    return () => { unsubCart(); unsubWish(); };
-  }, []);
+  const cartHandler = (data) => {
+    const total = (data?.items || []).reduce((sum, i) => sum + (i.quantity || 0), 0);
+    setCartCount(total);
+  };
+  const wishHandler = (data) => {
+    setWishlistCount((data?.products || []).length);
+  };
+
+  EventEmitter.on('cart-updated', cartHandler);
+  EventEmitter.on('wishlist-updated', wishHandler);
+
+  return () => {
+    EventEmitter.off('cart-updated', cartHandler);
+    EventEmitter.off('wishlist-updated', wishHandler);
+  };
+}, []);
 
   return (
     <CartContext.Provider value={{ cartCount, wishlistCount }}>
