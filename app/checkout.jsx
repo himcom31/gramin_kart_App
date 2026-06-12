@@ -21,7 +21,6 @@ const RAZORPAY_MODE = 'native';
 // ─── Imports ──────────────────────────────────────────────────────────────────
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -296,7 +295,7 @@ function RazorpayWebViewModal({ visible, html, onMessage, onClose }) {
 
 // ─── Order Success ────────────────────────────────────────────────────────────
 function OrderSuccess({ order, onDone }) {
-  const navigation = useNavigation();
+ 
 
   return (
     <SafeAreaView style={s.successBg}>
@@ -316,13 +315,13 @@ function OrderSuccess({ order, onDone }) {
             <Text style={s.successRowValue2}>{order?.paymentMethod}</Text>
           </View>
         </View>
-        <TouchableOpacity 
-  onPress={() => navigation.navigate('/products')} 
-  style={s.successBtn} 
-  activeOpacity={0.88}
->
-  <Text style={s.successBtnTxt}>Go to Home</Text>
-</TouchableOpacity>
+        <TouchableOpacity
+          onPress={onDone}
+          style={s.successBtn}
+          activeOpacity={0.88}
+        >
+          <Text style={s.successBtnTxt}>Go to Home</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -410,7 +409,6 @@ function CouponSection({ couponApplied, couponCode, setCouponCode, couponError, 
 export default function CheckoutScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
 
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -684,8 +682,8 @@ export default function CheckoutScreen() {
 
   // ── Success screen ─────────────────────────────────────────────────────────
   if (orderSuccess) {
-    return <OrderSuccess order={orderSuccess} onDone={() => router.replace('/dashboard')} />;
-  }
+  return <OrderSuccess order={orderSuccess} onDone={() => router.replace('/products')} />;
+}
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
