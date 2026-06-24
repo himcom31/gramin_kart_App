@@ -43,12 +43,21 @@ const apiCancelOrder = async (id) => {
 
 // ─── PDF Download Helper ──────────────────────────────────────────────────────
 const downloadPdf = async (type, orderId, orderNumber) => {
-  // type: "invoice" | "receipt"
   const token = await getToken();
+  
+  // ✅ Pehle simple fetch se check karo response kya aa raha hai
   const endpoint =
     type === "invoice"
       ? `${API_URL}/api/invoice/${orderId}/user/invoice?download=1`
       : `${API_URL}/api/receipt/${orderId}/user/receipt?download=1`;
+
+  console.log("Endpoint:", endpoint);
+  console.log("Token:", token ? "exists" : "MISSING");
+  console.log("Order ID:", orderId);
+
+  if (!token) throw new Error("Token missing - please login again");
+  if (!orderId) throw new Error("Order ID missing");
+  if (!API_URL) throw new Error("API_URL is undefined");
 
   const filename = type === "invoice"
     ? `Invoice-${orderNumber || orderId}.pdf`
@@ -62,10 +71,12 @@ const downloadPdf = async (type, orderId, orderNumber) => {
     { headers: { Authorization: `Bearer ${token}` } }
   );
 
-  const { uri } = await downloadResumable.downloadAsync();
-  return uri;
-};
+  const result = await downloadResumable.downloadAsync();
+  
+  if (!result?.uri) throw new Error("No file received from server");
 
+  return result.uri;
+};
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtDate = (iso) => {
   if (!iso) return "—";
@@ -237,25 +248,26 @@ const OrderDetail = ({ order, onBack, onCancel, cancelling }) => {
   const [receiptLoading, setReceiptLoading] = useState(false);
 
   const handleDownload = async (type) => {
-    const setLoading = type === "invoice" ? setInvoiceLoading : setReceiptLoading;
-    setLoading(true);
-    try {
-      const uri = await downloadPdf(type, order.id, order.orderNumber);
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(uri, {
-          mimeType: "application/pdf",
-          dialogTitle: type === "invoice" ? "Download Invoice" : "Download Receipt",
-        });
-      } else {
-        Alert.alert("Saved", `${type === "invoice" ? "Invoice" : "Receipt"} saved to documents.`);
-      }
-    } catch (err) {
-      Alert.alert("Error", `Failed to download ${type}. Please try again.`);
-    } finally {
-      setLoading(false);
+  const setLoading = type === "invoice" ? setInvoiceLoading : setReceiptLoading;
+  setLoading(true);
+  try {
+    const uri = await downloadPdf(type, order.id, order.orderNumber);
+    const canShare = await Sharing.isAvailableAsync();
+    if (canShare) {
+      await Sharing.shareAsync(uri, {
+        mimeType: "application/pdf",
+        dialogTitle: type === "invoice" ? "Download Invoice" : "Download Receipt",
+      });
+    } else {
+      Alert.alert("Saved", "File saved to documents.");
     }
-  };
+  } catch (err) {
+    // ✅ Exact error dikhega Alert mein
+    Alert.alert("Error", err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>

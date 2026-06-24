@@ -14,7 +14,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { apiFetch } from "../api/api";
 import { Storage as store } from "../api/storage";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -228,7 +227,7 @@ export default function UserProfile() {
     const token = await store.getItem("userToken");
 
     if (!token) {
-      showToast("Session expired, please login again", "error");
+      showToast("Token missing", "error");
       setSaving(false);
       return;
     }
@@ -243,24 +242,40 @@ export default function UserProfile() {
     if (localImg) {
       const filename = localImg.split("/").pop();
       const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1].toLowerCase()}` : "image/jpeg";
-      fd.append("image", { uri: localImg, name: filename, type });
+      const ext  = match ? match[1].toLowerCase() : "jpeg";
+      const type = ext === "heic" ? "image/jpeg" : `image/${ext}`;
+      const name = ext === "heic" ? "photo.jpg" : filename;
+
+      // ✅ Image info toast mein dikhao
+      showToast(`IMG: ${name} | ${type}`, "success");
+      await new Promise(r => setTimeout(r, 2500));
+
+      fd.append("image", { uri: localImg, name, type });
+    } else {
+      showToast("No image selected", "error");
+      await new Promise(r => setTimeout(r, 2500));
     }
 
-    // ✅ apiFetch use kar raha hai - direct fetch nahi
-    const data = await apiFetch(
-      "/user/update-profile",
-      { method: "PUT", body: fd },
-      token
-    );
+    // ✅ URL check
+    showToast(`URL: ${API_BASE}/update-profile`, "success");
+    await new Promise(r => setTimeout(r, 2500));
 
-    if (!data.success) return showToast(data.message || "Update failed", "error");
-    if (data.user?.avatar) setForm(p => ({ ...p, avatar: data.user.avatar }));
-    setLocalImg(null);
-    showToast("✓ Profile updated successfully!");
+    const res = await fetch(`${API_BASE}/update-profile`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+      body: fd,
+    });
+
+    // ✅ Raw response dikhao
+    const rawText = await res.text();
+    showToast(`STATUS:${res.status} | ${rawText.slice(0, 60)}`, res.ok ? "success" : "error");
 
   } catch (e) {
-    showToast(e.message || "Network error", "error");
+    // ✅ Exact error dikhao
+    showToast(`ERR: ${e.message}`, "error");
   } finally {
     setSaving(false);
   }
