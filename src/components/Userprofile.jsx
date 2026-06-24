@@ -1,6 +1,7 @@
 // components/UserProfile.jsx  — React Native (Expo Router)
 // ✅ Fixed: FormData image upload, no Content-Type header, clean save flow
 
+import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import {
@@ -222,70 +223,71 @@ export default function UserProfile() {
   };
 
   // ── Save profile ──────────────────────────────────────────────────────────
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const token = await store.getItem("userToken");
+const handleSave = async () => {
+  setSaving(true);
+  try {
+    const token = await store.getItem("userToken");
 
-      if (!token) {
-        showToast("Session expired. Please login again.", "error");
-        return;
-      }
+    if (!token) {
+      showToast("Session expired. Please login again.", "error");
+      setSaving(false);
+      return;
+    }
 
-      const fd = new FormData();
-      fd.append("fullName",    form.fullName);
-      fd.append("country",     form.country);
-      fd.append("phone",       form.phone);
-      fd.append("gender",      form.gender);
-      fd.append("dateOfBirth", form.dateOfBirth);
+    const fd = new FormData();
+    fd.append("fullName",    form.fullName);
+    fd.append("country",     form.country);
+    fd.append("phone",       form.phone);
+    fd.append("gender",      form.gender);
+    fd.append("dateOfBirth", form.dateOfBirth);
 
-      // ✅ FIXED: Correct FormData image append for React Native
-      if (localImg) {
-        const filename = localImg.split("/").pop();
-        const match    = /\.(\w+)$/.exec(filename);
-        const ext      = match ? match[1].toLowerCase() : "jpeg";
-        const mimeType = ext === "heic" ? "image/jpeg" : `image/${ext}`;
-        const finalName = ext === "heic" ? "photo.jpg" : filename;
+    if (localImg) {
+      const uri = Platform.OS === "android"
+        ? localImg
+        : localImg.replace("file://", "");
 
-        fd.append("image", {
-          uri:  localImg,
-          type: mimeType,
-          name: finalName,
-        });
-      }
+      const filename = localImg.split("/").pop();
+      const ext = filename.split(".").pop()?.toLowerCase() || "jpeg";
+      const mimeType = ["heic", "heif"].includes(ext) ? "image/jpeg" : `image/${ext}`;
+      const finalName = ["heic", "heif"].includes(ext) ? "photo.jpg" : filename;
 
-      // ✅ FIXED: No Content-Type header — React Native sets multipart boundary automatically
-      const res = await fetch(`${API_BASE}/update-profile`, {
-        method: "PUT",
+      fd.append("image", {
+        uri,
+        type: mimeType,
+        name: finalName,
+      });
+    }
+
+
+    const response = await axios.put(
+      `${API_BASE}/update-profile`,
+      fd,
+      {
         headers: {
           Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-          // ❌ DO NOT add "Content-Type": "multipart/form-data" — breaks boundary
+          "Content-Type": "multipart/form-data",
         },
-        body: fd,
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        // Update avatar in state if server returns new URL
-        if (data.user?.avatar) {
-          setForm(f => ({ ...f, avatar: data.user.avatar }));
-          setLocalImg(null); // clear local preview, use server URL now
-        }
-        showToast("Profile updated successfully ✓", "success");
-      } else {
-        showToast(data.message || "Update failed", "error");
+        timeout: 30000,
       }
+    );
 
-    } catch (e) {
-      console.error("Save error:", e);
-      showToast("Something went wrong. Try again.", "error");
-    } finally {
-      setSaving(false);
+    if (response.data.success) {
+      if (response.data.user?.avatar) {
+        setForm(f => ({ ...f, avatar: response.data.user.avatar }));
+        setLocalImg(null);
+      }
+      showToast("Profile updated successfully ✓", "success");
+    } else {
+      showToast(response.data.message || "Update failed", "error");
     }
-  };
 
+  } catch (e) {
+    const msg = e?.response?.data?.message || e.message || "Network error";
+    showToast(`Error: ${msg}`, "error");
+  } finally {
+    setSaving(false);
+  }
+};
   const initials  = form.fullName
     ? form.fullName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
     : "U";

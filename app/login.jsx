@@ -54,36 +54,14 @@ function formatPhone(value) {
 
 // ─── Floating Label Input ───────────────────────────────────────────────────
 function FloatingInput({ label, value, onChangeText, secureTextEntry, isPassword, showPw, onTogglePw, ...rest }) {
-  const [focused, setFocused] = useState(false);
-  const floatAnim = useRef(new Animated.Value(value ? 1 : 0)).current;
-
-  const onFocus = () => {
-    setFocused(true);
-    Animated.timing(floatAnim, { toValue: 1, duration: 150, useNativeDriver: false }).start();
-  };
-  const onBlur = () => {
-    setFocused(false);
-    if (!value) Animated.timing(floatAnim, { toValue: 0, duration: 150, useNativeDriver: false }).start();
-  };
-
-  const labelTop   = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [18, 6] });
-  const labelSize  = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [14, 11] });
-  const labelColor = floatAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['#b0b8b0', focused ? '#2d9e2d' : '#999'],
-  });
-
   return (
-    <View style={[styles.inputWrap, focused && styles.inputWrapFocused]}>
-      <Animated.Text style={[styles.floatLabel, { top: labelTop, fontSize: labelSize, color: labelColor }]}>
-        {label}
-      </Animated.Text>
+    <View style={styles.inputWrap}>
       <TextInput
         style={[styles.floatInput, isPassword && { paddingRight: 48 }]}
         value={value}
         onChangeText={onChangeText}
-        onFocus={onFocus}
-        onBlur={onBlur}
+        placeholder={label}
+        placeholderTextColor="#b0b8b0"
         secureTextEntry={secureTextEntry}
         {...rest}
       />
@@ -525,15 +503,15 @@ const styles = StyleSheet.create({
   tabTextActive:  { color: '#2d9e2d', fontWeight: '700' },
 
   // Floating input
-  inputWrap: {
-    borderWidth: 1.5, borderColor: '#e5e7e5',
-    borderRadius: 12, paddingHorizontal: 14,
-    marginBottom: 14, position: 'relative', height: 58,
-    justifyContent: 'center',
-  },
-  inputWrapFocused: { borderColor: '#2d9e2d' },
-  floatLabel:  { position: 'absolute', left: 14 },
-  floatInput:  { position: 'absolute', bottom: 8, left: 14, right: 14, fontSize: 14, color: '#222', padding: 0 },
+inputWrap: {
+  borderWidth: 1.5, borderColor: '#e5e7e5',
+  borderRadius: 12, paddingHorizontal: 14,
+  marginBottom: 14, height: 52,
+  justifyContent: 'center',
+},
+inputWrapFocused: { borderColor: '#2d9e2d' },
+floatLabel:  {},
+floatInput:  { fontSize: 14, color: '#222', padding: 0 },
   eyeBtn:      { position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' },
   eyeIcon:     { fontSize: 17 },
 
