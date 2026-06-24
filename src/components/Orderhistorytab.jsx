@@ -1,7 +1,8 @@
 // components/OrderHistoryTab.jsx — React Native (Expo Router)
 // Status filter redesigned as a 2×4 pill grid — fully visible, no horizontal scroll needed.
 
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
+import * as MediaLibrary from "expo-media-library";
 import * as Sharing from "expo-sharing";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -44,7 +45,7 @@ const apiCancelOrder = async (id) => {
 // ─── PDF Download Helper ──────────────────────────────────────────────────────
 const downloadPdf = async (type, orderId, orderNumber) => {
   const token = await getToken();
-  
+
   // ✅ Pehle simple fetch se check karo response kya aa raha hai
   const endpoint =
     type === "invoice"
@@ -72,11 +73,32 @@ const downloadPdf = async (type, orderId, orderNumber) => {
   );
 
   const result = await downloadResumable.downloadAsync();
-  
+
   if (!result?.uri) throw new Error("No file received from server");
 
   return result.uri;
 };
+
+// ─── Save to device Downloads / Files helper ─────────────────────────────────
+const saveToDeviceStorage = async (uri) => {
+  const { status } = await MediaLibrary.requestPermissionsAsync();
+  if (status !== "granted") {
+    return { saved: false, reason: "permission_denied" };
+  }
+  try {
+    const asset = await MediaLibrary.createAssetAsync(uri);
+    let album = await MediaLibrary.getAlbumAsync("Download");
+    if (album == null) {
+      await MediaLibrary.createAlbumAsync("Download", asset, false);
+    } else {
+      await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+    }
+    return { saved: true };
+  } catch (e) {
+    return { saved: false, reason: e.message };
+  }
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtDate = (iso) => {
   if (!iso) return "—";
@@ -155,47 +177,59 @@ const OrderStepper = ({ status }) => {
   const display = STEP_MAP[status] || status;
   if (display === "Cancelled" || display === "Returned") return null;
   const currentIdx = STEPS.indexOf(display);
-  const DOT = 28;
-  const LINE = (SW - 32 - DOT * 5 - 8) / 4;
+  const [width, setWidth] = useState(0);
+
+  const DOT  = 24;
+  const LINE = width > 0 ? (width - DOT * 5) / 4 : 0;
 
   return (
-    <View style={{ marginVertical: 14 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
-        {STEPS.map((step, i) => {
-          const done   = i < currentIdx;
-          const active = i === currentIdx;
-          return (
-            <View key={step} style={{ flexDirection: "row", alignItems: "center" }}>
-              <View style={{ alignItems: "center" }}>
-                <View style={[
-                  stp.dot,
-                  { width: DOT, height: DOT, borderRadius: DOT / 2 },
-                  (done || active) && { backgroundColor: "#16a34a" },
-                  active && { borderWidth: 2.5, borderColor: "#bbf7d0" },
-                ]}>
-                  {done
-                    ? <Text style={{ color: "#fff", fontSize: 9, fontWeight: "800" }}>✓</Text>
-                    : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: active ? "#fff" : "#9ca3af" }} />}
+    <View
+      style={{ marginVertical: 14 }}
+      onLayout={e => setWidth(e.nativeEvent.layout.width)}
+    >
+      {width > 0 && (
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
+          {STEPS.map((step, i) => {
+            const done   = i < currentIdx;
+            const active = i === currentIdx;
+            return (
+              <View key={step} style={{ flexDirection: "row", alignItems: "center" }}>
+                <View style={{ alignItems: "center" }}>
+                  <View style={[
+                    stp.dot,
+                    { width: DOT, height: DOT, borderRadius: DOT / 2 },
+                    (done || active) && { backgroundColor: "#16a34a" },
+                    active && { borderWidth: 2.5, borderColor: "#bbf7d0" },
+                  ]}>
+                    {done
+                      ? <Text style={{ color: "#fff", fontSize: 8, fontWeight: "800" }}>✓</Text>
+                      : <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: active ? "#fff" : "#9ca3af" }} />}
+                  </View>
+                  <Text style={[
+                    stp.label,
+                    { width: DOT + 8, textAlign: "center" },
+                    active && { color: "#16a34a", fontWeight: "700" },
+                    done && { color: "#374151" },
+                  ]}>
+                    {STEP_LABELS[i]}
+                  </Text>
                 </View>
-                <Text style={[
-                  stp.label,
-                  { width: DOT + 10, textAlign: "center" },
-                  active && { color: "#16a34a", fontWeight: "700" },
-                  done && { color: "#374151" },
-                ]}>
-                  {STEP_LABELS[i]}
-                </Text>
+                {i < STEPS.length - 1 && (
+                  <View style={[
+                    stp.line,
+                    { width: LINE },
+                    done && { backgroundColor: "#16a34a" },
+                  ]} />
+                )}
               </View>
-              {i < STEPS.length - 1 && (
-                <View style={[stp.line, { width: LINE }, done && { backgroundColor: "#16a34a" }]} />
-              )}
-            </View>
-          );
-        })}
-      </View>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 };
+
 const stp = StyleSheet.create({
   dot:   { backgroundColor: "#e5e7eb", alignItems: "center", justifyContent: "center" },
   label: { fontSize: 9, fontWeight: "500", color: "#9ca3af", marginTop: 4 },
@@ -248,26 +282,38 @@ const OrderDetail = ({ order, onBack, onCancel, cancelling }) => {
   const [receiptLoading, setReceiptLoading] = useState(false);
 
   const handleDownload = async (type) => {
-  const setLoading = type === "invoice" ? setInvoiceLoading : setReceiptLoading;
-  setLoading(true);
-  try {
-    const uri = await downloadPdf(type, order.id, order.orderNumber);
-    const canShare = await Sharing.isAvailableAsync();
-    if (canShare) {
-      await Sharing.shareAsync(uri, {
-        mimeType: "application/pdf",
-        dialogTitle: type === "invoice" ? "Download Invoice" : "Download Receipt",
-      });
-    } else {
-      Alert.alert("Saved", "File saved to documents.");
+    const setLoading = type === "invoice" ? setInvoiceLoading : setReceiptLoading;
+    setLoading(true);
+    try {
+      const uri = await downloadPdf(type, order.id, order.orderNumber);
+
+      // ✅ Pehle device storage (Downloads) mein save karne ki koshish karo
+      const saveResult = await saveToDeviceStorage(uri);
+
+      if (saveResult.saved) {
+        Alert.alert(
+          "Downloaded",
+          `${type === "invoice" ? "Invoice" : "Receipt"} saved to your device.`
+        );
+      } else {
+        // ✅ Fallback — agar permission na mile ya save fail ho to share sheet dikhao
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(uri, {
+            mimeType: "application/pdf",
+            dialogTitle: type === "invoice" ? "Download Invoice" : "Download Receipt",
+          });
+        } else {
+          Alert.alert("Saved", "File saved to documents.");
+        }
+      }
+    } catch (err) {
+      // ✅ Exact error dikhega Alert mein
+      Alert.alert("Error", err.message);
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    // ✅ Exact error dikhega Alert mein
-    Alert.alert("Error", err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>

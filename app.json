@@ -52,7 +52,15 @@
           "cameraPermission": "Allow $(BUNDLE_IDENTIFIER) to access your camera to take a profile picture."
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow $(BUNDLE_IDENTIFIER) to access your photos.",
+          "savePhotosPermission": "Allow $(BUNDLE_IDENTIFIER) to save invoices and receipts.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

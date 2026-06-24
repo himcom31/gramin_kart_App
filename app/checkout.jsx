@@ -21,7 +21,8 @@ const RAZORPAY_MODE = 'native';
 // ─── Imports ──────────────────────────────────────────────────────────────────
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+
 import { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -491,7 +492,11 @@ export default function CheckoutScreen() {
     } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useFocusEffect(
+  useCallback(() => {
+    load();
+  }, [load])
+);
 
   useEffect(() => {
     if (!cartItems.length) return;
@@ -769,7 +774,8 @@ export default function CheckoutScreen() {
               {addresses.length === 0 ? (
                 <View style={s.noAddrBox}>
                   <Text style={s.noAddrText}>No address saved yet.</Text>
-                  <TouchableOpacity onPress={() => router.push('/dashboard')} style={s.addAddrBtn}>
+                  <TouchableOpacity onPress={() => router.push('/(tabs)/account?tab=address')} style={s.addAddrBtn}>
+
                     <Text style={s.addAddrBtnTxt}>Add Address</Text>
                   </TouchableOpacity>
                 </View>
@@ -792,12 +798,12 @@ export default function CheckoutScreen() {
             <View style={s.card}>
               <SectionHeader icon="💳" title="Payment Method" />
               <PayBtn active={paymentMethod === 'COD'}      onPress={() => setPaymentMethod('COD')}      icon="💵" label="Cash on Delivery" />
-              {gateways.some(g => g.gatewayName === 'Razorpay') && (
+              {/* {gateways.some(g => g.gatewayName === 'Razorpay') && (
                 <PayBtn active={paymentMethod === 'Razorpay'} onPress={() => setPaymentMethod('Razorpay')} icon="🔐" label="Razorpay" />
               )}
               {gateways.some(g => g.gatewayName === 'Stripe') && (
                 <PayBtn active={paymentMethod === 'Card'}     onPress={() => setPaymentMethod('Card')}     icon="💳" label="Credit / Debit Card" />
-              )}
+              )} */}
             </View>
 
             {/* Note */}

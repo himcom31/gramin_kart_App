@@ -2,7 +2,9 @@
 // Nav bar removed. All navigation lives inside the Account section.
 // Back from any sub-page always returns to Dashboard.
 
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+
+
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -477,6 +479,12 @@ export default function UserDashboard() {
   const insets = useSafeAreaInsets();
   const { logout } = useAuth(); // ← pulled from context
 
+  // ✅ Yeh add karo
+const { tab: initialTab } = useLocalSearchParams();
+
+// ✅ useState ko yeh karo
+const [activeTab, setActiveTab] = useState(initialTab || "dashboard");
+
   const [activeTab,        setActiveTab]        = useState("dashboard");
   const [profile,          setProfile]          = useState(null);
   const [cartData,         setCartData]         = useState({ items: [] });
@@ -605,6 +613,44 @@ export default function UserDashboard() {
   };
 
   // ── Sub-pages ────────────────────────────────────────────────────────────────
+if (activeTab === "cart") return (
+  <SafeAreaView style={{ flex: 1, backgroundColor: FK.blue }}>
+    <SubPageHeader title="My Cart" onBack={goBack} topInset={insets.top} />
+    <ScrollView style={{ backgroundColor: FK.bg }} contentContainerStyle={{ padding: 12, paddingBottom: 30 }}>
+      {cartItems.length === 0
+        ? (
+          <View style={empty.wrap}>
+            <Text style={empty.icon}>🛒</Text>
+            <Text style={empty.title}>Your cart is empty!</Text>
+            <Text style={empty.sub}>Add items to get started.</Text>
+            <TouchableOpacity onPress={() => router.push("/products")} style={empty.btn}>
+              <Text style={empty.btnTxt}>BROWSE PRODUCTS</Text>
+            </TouchableOpacity>
+          </View>
+        )
+        : (
+          <>
+            {cartItems.map((item, i) => (
+              <CartItemRow key={item.id || i} item={item}
+                onQtyChange={async (id, qty) => setCartData(await apiUpdateCartItem(id, qty))}
+                onRemove={async (id) => setCartData(await apiRemoveFromCart(id))} />
+            ))}
+            <View style={[dash.cartFooter, { marginTop: 16, backgroundColor: FK.white, padding: 14, borderRadius: 4 }]}>
+              <View>
+                <Text style={{ fontSize: 11, color: FK.textSub }}>Total Amount</Text>
+                <Text style={{ fontSize: 18, fontWeight: "800", color: FK.text }}>₹{cartTotal.toFixed(2)}</Text>
+              </View>
+              <TouchableOpacity onPress={() => router.push("/checkout")} style={dash.checkoutBtn}>
+                <Text style={dash.checkoutBtnTxt}>PLACE ORDER</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )
+      }
+    </ScrollView>
+    {toast && <Toast {...toast} onDone={() => setToast(null)} />}
+  </SafeAreaView>
+);
   if (activeTab === "orders") return (
     <SafeAreaView style={{ flex: 1, backgroundColor: FK.blue }}>
       <SubPageHeader title="My Orders" onBack={goBack} topInset={insets.top} />
@@ -739,44 +785,35 @@ export default function UserDashboard() {
         </View>
 
         {/* Cart Summary */}
-        <View style={dash.section}>
-          <SectionHeader
-            title="My Cart"
-            action={cartCount > 0 ? `${cartCount} item${cartCount !== 1 ? "s" : ""}` : undefined} />
-          {loading
-            ? <ActivityIndicator color={FK.blue} style={{ marginVertical: 20 }} />
-            : cartItems.length === 0
-              ? (
-                <View style={empty.rowWrap}>
-                  <Text style={{ fontSize: 28 }}>🛒</Text>
-                  <View>
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: FK.text }}>Your cart is empty</Text>
-                    <TouchableOpacity onPress={() => router.push("/products")}>
-                      <Text style={{ fontSize: 12, color: FK.blue, fontWeight: "600", marginTop: 3 }}>Browse Products →</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )
-              : (
-                <>
-                  {cartItems.map((item, i) => (
-                    <CartItemRow key={item.id || i} item={item}
-                      onQtyChange={async (id, qty) => setCartData(await apiUpdateCartItem(id, qty))}
-                      onRemove={async (id) => setCartData(await apiRemoveFromCart(id))} />
-                  ))}
-                  <View style={dash.cartFooter}>
-                    <View>
-                      <Text style={{ fontSize: 11, color: FK.textSub }}>Total Amount</Text>
-                      <Text style={{ fontSize: 18, fontWeight: "800", color: FK.text }}>₹{cartTotal.toFixed(2)}</Text>
-                    </View>
-                    <TouchableOpacity onPress={() => router.push("/checkout")} style={dash.checkoutBtn}>
-                      <Text style={dash.checkoutBtnTxt}>PLACE ORDER</Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )
-          }
-        </View>
+        {/* Cart Summary */}
+<View style={dash.section}>
+  <SectionHeader title="My Cart" />
+  {loading
+    ? <View style={{ height: 48, backgroundColor: FK.divider, borderRadius: 4 }} />
+    : cartItems.length === 0
+      ? (
+        <TouchableOpacity style={dash.addAddrInline} onPress={() => router.push("/products")}>
+          <Text style={{ color: FK.blue, fontWeight: "700", fontSize: 13 }}>🛒  Browse Products to add items</Text>
+        </TouchableOpacity>
+      )
+      : (
+        <TouchableOpacity style={dash.cartPreview} onPress={() => navigateTo("cart")} activeOpacity={0.8}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+            <Text style={{ fontSize: 28 }}>🛒</Text>
+            <View>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: FK.text }}>
+                {cartCount} item{cartCount !== 1 ? "s" : ""} in cart
+              </Text>
+              <Text style={{ fontSize: 13, color: FK.textSub, marginTop: 2 }}>
+                Total: <Text style={{ fontWeight: "800", color: FK.text }}>₹{cartTotal.toFixed(2)}</Text>
+              </Text>
+            </View>
+          </View>
+          <Text style={{ color: FK.blue, fontSize: 22, marginRight: 4 }}>›</Text>
+        </TouchableOpacity>
+      )
+  }
+</View>
 
         {/* Default Address */}
         <View style={dash.section}>
@@ -888,4 +925,14 @@ const dash = StyleSheet.create({
   addAddrBtnTxt:    { color: FK.blue, fontSize: 14, fontWeight: "700", letterSpacing: 0.5 },
   rvRow:            { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: FK.divider },
   rvImg:            { width: 58, height: 58, borderRadius: 4, backgroundColor: "#F9F9F9", overflow: "hidden", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: FK.divider },
+  cartPreview: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: 12,
+  backgroundColor: FK.blueLight,
+  borderRadius: 4,
+  borderWidth: 1,
+  borderColor: "#c5fbd0",
+},
 });
