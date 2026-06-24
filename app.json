@@ -7,6 +7,13 @@
     "icon": "./assets/images/icon.png",
     "scheme": "graminkartmobile",
     "userInterfaceStyle": "automatic",
+    "updates": {
+      "enabled": true,
+      "url": "https://u.expo.dev/de02c92c-e729-4985-9af8-d42cae78b228"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "ios": {
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.kokok1.GraminKartMobile",

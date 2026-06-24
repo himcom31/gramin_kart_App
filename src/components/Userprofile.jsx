@@ -14,23 +14,24 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { apiFetch } from "../api/api";
 import { Storage as store } from "../api/storage";
 
-const API_URL  = process.env.EXPO_PUBLIC_API_URL;
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const API_BASE = `${API_URL}/api/user`;
 
 const COUNTRIES = [
-  "Afghanistan","Albania","Algeria","Argentina","Australia","Austria","Bangladesh",
-  "Belgium","Brazil","Canada","Chile","China","Colombia","Croatia","Czech Republic",
-  "Denmark","Egypt","Ethiopia","Finland","France","Germany","Ghana","Greece","Hungary",
-  "India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Japan","Jordan",
-  "Kenya","Malaysia","Mexico","Morocco","Netherlands","New Zealand","Nigeria","Norway",
-  "Pakistan","Peru","Philippines","Poland","Portugal","Romania","Russia","Saudi Arabia",
-  "South Africa","South Korea","Spain","Sri Lanka","Sweden","Switzerland","Thailand",
-  "Turkey","Ukraine","United Arab Emirates","United Kingdom","United States","Vietnam",
+  "Afghanistan", "Albania", "Algeria", "Argentina", "Australia", "Austria", "Bangladesh",
+  "Belgium", "Brazil", "Canada", "Chile", "China", "Colombia", "Croatia", "Czech Republic",
+  "Denmark", "Egypt", "Ethiopia", "Finland", "France", "Germany", "Ghana", "Greece", "Hungary",
+  "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Japan", "Jordan",
+  "Kenya", "Malaysia", "Mexico", "Morocco", "Netherlands", "New Zealand", "Nigeria", "Norway",
+  "Pakistan", "Peru", "Philippines", "Poland", "Portugal", "Romania", "Russia", "Saudi Arabia",
+  "South Africa", "South Korea", "Spain", "Sri Lanka", "Sweden", "Switzerland", "Thailand",
+  "Turkey", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Vietnam",
 ];
 
-const GENDERS = ["Male","Female","Other","Prefer not to say"];
+const GENDERS = ["Male", "Female", "Other", "Prefer not to say"];
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 const Toast = ({ msg, type }) => {
@@ -109,7 +110,7 @@ const SelectField = ({ value, placeholder, options, onChange }) => {
 };
 
 const sm = StyleSheet.create({
-  overlay:  { flex: 1, backgroundColor: "rgba(0,0,0,0.35)" },
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.35)" },
   sheet: {
     backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20,
     paddingHorizontal: 16, paddingTop: 10, paddingBottom: 24,
@@ -124,8 +125,8 @@ const sm = StyleSheet.create({
     paddingVertical: 14, paddingHorizontal: 6,
     borderBottomWidth: 1, borderBottomColor: "#f1f5f9",
   },
-  optionSelected:    { backgroundColor: "#f0fdf4" },
-  optionTxt:         { fontSize: 14, color: "#1e293b" },
+  optionSelected: { backgroundColor: "#f0fdf4" },
+  optionTxt: { fontSize: 14, color: "#1e293b" },
   optionTxtSelected: { fontWeight: "700", color: "#16a34a" },
   cancelBtn: {
     marginTop: 10, backgroundColor: "#f1f5f9",
@@ -144,9 +145,9 @@ const Field = ({ label, children }) => (
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function UserProfile() {
-  const [loading,  setLoading]  = useState(true);
-  const [saving,   setSaving]   = useState(false);
-  const [toast,    setToast]    = useState({ msg: "", type: "success" });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState({ msg: "", type: "success" });
   const [localImg, setLocalImg] = useState(null); // ← restored
 
   const [form, setForm] = useState({
@@ -164,20 +165,20 @@ export default function UserProfile() {
     (async () => {
       try {
         const token = await store.getItem("userToken");
-        const res   = await fetch(`${API_BASE}/me`, {
+        const res = await fetch(`${API_BASE}/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
         if (data.success) {
           const u = data.user;
           setForm({
-            fullName:    u.fullName    || "",
-            country:     u.country     || "",
-            phone:       u.phone       || "",
-            gender:      u.gender      || "",
+            fullName: u.fullName || "",
+            country: u.country || "",
+            phone: u.phone || "",
+            gender: u.gender || "",
             dateOfBirth: u.dateOfBirth ? u.dateOfBirth.slice(0, 10) : "",
-            email:       u.email       || "",
-            avatar:      u.avatar      || "",
+            email: u.email || "",
+            avatar: u.avatar || "",
           });
         }
       } catch {
@@ -190,85 +191,82 @@ export default function UserProfile() {
 
   // ── Pick image via expo-image-picker ────────────────────────────────────────
   const pickImage = async () => {
-  try {
-    const { status: existingStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== "granted") {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== "granted") {
-      showToast("Gallery permission is required to change photo", "error");
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],   // ← updated, MediaTypeOptions is deprecated
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
-
-    if (!result.canceled && result.assets?.[0]?.uri) {
-      setLocalImg(result.assets[0].uri);
-    }
-  } catch (e) {
-    console.error("Image picker error:", e);
-    showToast("Image picker unavailable", "error");
-  }
-};
-
-  // ── Save profile ────────────────────────────────────────────────────────────
-  const handleSave = async () => {
-    setSaving(true);
     try {
-      const token = await store.getItem("userToken");
-      const fd    = new FormData();
-      fd.append("fullName",    form.fullName);
-      fd.append("country",     form.country);
-      fd.append("phone",       form.phone);
-      fd.append("gender",      form.gender);
-      fd.append("dateOfBirth", form.dateOfBirth);
+      const { status: existingStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
+      let finalStatus = existingStatus;
 
-      // ← Append image if user picked one
-      if (localImg) {
-        const filename = localImg.split("/").pop();
-        const ext = filename.split(".").pop().toLowerCase();
-const mimeMap = {
-  jpg:  "image/jpeg",
-  jpeg: "image/jpeg",
-  png:  "image/png",
-  webp: "image/webp",
-  heic: "image/heic",
-};
-const type = mimeMap[ext] || "image/jpeg";
-        fd.append("image", { uri: localImg, name: filename, type });
+      if (existingStatus !== "granted") {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        finalStatus = status;
       }
 
-      const res = await fetch(`${API_BASE}/update-profile`, {
-        method:  "PUT",
-        headers: {
-          Authorization:  `Bearer ${token}`,
-          
-        },
-        body: fd,
+      if (finalStatus !== "granted") {
+        showToast("Gallery permission is required to change photo", "error");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],   // ← updated, MediaTypeOptions is deprecated
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
       });
-      const data = await res.json();
-      if (!data.success) return showToast(data.message || "Update failed", "error");
-      if (data.user?.avatar) setForm(p => ({ ...p, avatar: data.user.avatar }));
-      setLocalImg(null); // clear local preview after successful upload
-      showToast("✓ Profile updated successfully!");
+
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setLocalImg(result.assets[0].uri);
+      }
     } catch (e) {
-      console.error("Profile save error:", e);
-      showToast("Network error", "error");
-    } finally {
-      setSaving(false);
+      console.error("Image picker error:", e);
+      showToast("Image picker unavailable", "error");
     }
   };
 
-  const initials  = form.fullName
+  // ── Save profile ────────────────────────────────────────────────────────────
+  const handleSave = async () => {
+  setSaving(true);
+  try {
+    const token = await store.getItem("userToken");
+
+    if (!token) {
+      showToast("Session expired, please login again", "error");
+      setSaving(false);
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append("fullName",    form.fullName);
+    fd.append("country",     form.country);
+    fd.append("phone",       form.phone);
+    fd.append("gender",      form.gender);
+    fd.append("dateOfBirth", form.dateOfBirth);
+
+    if (localImg) {
+      const filename = localImg.split("/").pop();
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1].toLowerCase()}` : "image/jpeg";
+      fd.append("image", { uri: localImg, name: filename, type });
+    }
+
+    // ✅ apiFetch use kar raha hai - direct fetch nahi
+    const data = await apiFetch(
+      "/user/update-profile",
+      { method: "PUT", body: fd },
+      token
+    );
+
+    if (!data.success) return showToast(data.message || "Update failed", "error");
+    if (data.user?.avatar) setForm(p => ({ ...p, avatar: data.user.avatar }));
+    setLocalImg(null);
+    showToast("✓ Profile updated successfully!");
+
+  } catch (e) {
+    showToast(e.message || "Network error", "error");
+  } finally {
+    setSaving(false);
+  }
+};
+
+  const initials = form.fullName
     ? form.fullName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
     : "U";
   const avatarUri = localImg || form.avatar || null; // local preview takes priority
@@ -299,19 +297,19 @@ const type = mimeMap[ext] || "image/jpeg";
         {/* Avatar Card */}
         <View style={s.card}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-            
-<TouchableOpacity onPress={pickImage} activeOpacity={0.8}>
-  <View style={{ position: "relative" }}>   
-    <View style={s.avatarRing}>
-      {avatarUri
-        ? <Image source={{ uri: avatarUri }} style={s.avatarImg} />
-        : <Text style={s.avatarInitials}>{initials}</Text>}
-    </View>
-    <View style={s.cameraOverlay}>
-      <Text style={{ fontSize: 12 }}>📷</Text>
-    </View>
-  </View>
-</TouchableOpacity>
+
+            <TouchableOpacity onPress={pickImage} activeOpacity={0.8}>
+              <View style={{ position: "relative" }}>
+                <View style={s.avatarRing}>
+                  {avatarUri
+                    ? <Image source={{ uri: avatarUri }} style={s.avatarImg} />
+                    : <Text style={s.avatarInitials}>{initials}</Text>}
+                </View>
+                <View style={s.cameraOverlay}>
+                  <Text style={{ fontSize: 12 }}>📷</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
 
             <View style={{ flex: 1 }}>
               <Text style={s.avatarName} numberOfLines={1}>{form.fullName || "Your Name"}</Text>
@@ -409,12 +407,12 @@ const type = mimeMap[ext] || "image/jpeg";
 }
 
 const s = StyleSheet.create({
-  container:     { padding: 16, paddingBottom: 40 },
-  headerRow:     { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16, gap: 10 },
-  heading:       { fontSize: 22, fontWeight: "700", color: "#0f172a" },
-  subheading:    { fontSize: 13, color: "#64748b", marginTop: 4 },
+  container: { padding: 16, paddingBottom: 40 },
+  headerRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16, gap: 10 },
+  heading: { fontSize: 22, fontWeight: "700", color: "#0f172a" },
+  subheading: { fontSize: 13, color: "#64748b", marginTop: 4 },
   verifiedBadge: { backgroundColor: "#f0fdf4", borderWidth: 1.5, borderColor: "#bbf7d0", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
-  verifiedTxt:   { fontSize: 11, fontWeight: "700", color: "#16a34a" },
+  verifiedTxt: { fontSize: 11, fontWeight: "700", color: "#16a34a" },
   card: {
     backgroundColor: "#fff", borderRadius: 16, padding: 20, marginBottom: 12,
     shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 16, elevation: 3,
@@ -423,12 +421,12 @@ const s = StyleSheet.create({
     width: 80, height: 80, borderRadius: 40,
     borderWidth: 3, borderColor: "#4ade80",
     alignItems: "center", justifyContent: "center",
-    backgroundColor: "#f0fdf4", 
+    backgroundColor: "#f0fdf4",
   },
-  avatarImg:      { width: "100%", height: "100%", borderRadius: 40 ,overflow: "hidden",},
+  avatarImg: { width: "100%", height: "100%", borderRadius: 40, overflow: "hidden", },
   avatarInitials: { fontSize: 24, fontWeight: "700", color: "#16a34a" },
-  avatarName:     { fontSize: 16, fontWeight: "700", color: "#0f172a" },
-  avatarEmail:    { fontSize: 12, color: "#64748b", marginTop: 2 },
+  avatarName: { fontSize: 16, fontWeight: "700", color: "#0f172a" },
+  avatarEmail: { fontSize: 12, color: "#64748b", marginTop: 2 },
   cameraOverlay: {
     position: "absolute", bottom: 0, right: 0,
     backgroundColor: "#fff", borderRadius: 10,
@@ -440,8 +438,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 8, alignSelf: "flex-start",
   },
   changePhotoTxt: { color: "#fff", fontSize: 12, fontWeight: "600" },
-  sectionLabel:   { fontSize: 11, fontWeight: "700", color: "#16a34a", letterSpacing: 1, marginBottom: 16 },
-  fieldLabel:     { fontSize: 11, fontWeight: "700", color: "#64748b", letterSpacing: 0.5, marginBottom: 6 },
+  sectionLabel: { fontSize: 11, fontWeight: "700", color: "#16a34a", letterSpacing: 1, marginBottom: 16 },
+  fieldLabel: { fontSize: 11, fontWeight: "700", color: "#64748b", letterSpacing: 0.5, marginBottom: 6 },
   input: {
     borderWidth: 1.5, borderColor: "#e2e8f0", borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
@@ -454,6 +452,6 @@ const s = StyleSheet.create({
     borderRightWidth: 1, borderRightColor: "#e2e8f0",
     justifyContent: "center",
   },
-  saveBtn:    { backgroundColor: "#22c55e", borderRadius: 10, paddingVertical: 14, alignItems: "center", justifyContent: "center", marginTop: 20 },
+  saveBtn: { backgroundColor: "#22c55e", borderRadius: 10, paddingVertical: 14, alignItems: "center", justifyContent: "center", marginTop: 20 },
   saveBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "700" },
 });

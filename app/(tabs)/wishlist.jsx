@@ -146,7 +146,7 @@ export default function WishlistScreen() {
       <FlatList
         data={pairs}
         keyExtractor={(_, i) => String(i)}
-        contentContainerStyle={{ padding: 12, paddingBottom: 20 }}
+        contentContainerStyle={{ padding: 12, paddingBottom: 20 , paddingTop: 20}}
         showsVerticalScrollIndicator={false}
         renderItem={({ item, index }) => {
           const a = item;                      // left card
