@@ -1,16 +1,19 @@
 // components/OrderHistoryTab.jsx — React Native (Expo Router)
 // Status filter redesigned as a 2×4 pill grid — fully visible, no horizontal scroll needed.
 
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Linking,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { Storage as store } from "../api/storage";
 
@@ -36,6 +39,31 @@ const apiFetchOrder = async (id) => {
 const apiCancelOrder = async (id) => {
   const headers = await authHdr();
   return fetch(`${API_URL}/api/orders/my/${id}/cancel`, { method: "PATCH", headers }).then(r => r.json());
+};
+
+// ─── PDF Download Helper ──────────────────────────────────────────────────────
+const downloadPdf = async (type, orderId, orderNumber) => {
+  // type: "invoice" | "receipt"
+  const token = await getToken();
+  const endpoint =
+    type === "invoice"
+      ? `${API_URL}/api/invoice/${orderId}/invoice?download=1`
+      : `${API_URL}/api/receipt/${orderId}/receipt?download=1`;
+
+  const filename = type === "invoice"
+    ? `Invoice-${orderNumber || orderId}.pdf`
+    : `Receipt-${orderNumber || orderId}.pdf`;
+
+  const localUri = FileSystem.documentDirectory + filename;
+
+  const downloadResumable = FileSystem.createDownloadResumable(
+    endpoint,
+    localUri,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+
+  const { uri } = await downloadResumable.downloadAsync();
+  return uri;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -67,9 +95,7 @@ const sc = (s) => STATUS_COLOR[s] || { bg: "#e5e7eb", color: "#374151" };
 
 const STEP_MAP = { "Picked Up": "Shipped", "In Transit": "Shipped" };
 
-// ─── Filter tabs — 8 pills arranged in a 2-row grid, always fully visible ─────
-// Row 1: All · Pending · Confirmed · Picked Up
-// Row 2: In Transit · On The Way · Delivered · Cancelled
+// ─── Filter tabs — 8 pills arranged in a 2-row grid ──────────────────────────
 const FILTER_TABS = [
   { key: "All",        label: "All",        emoji: "🗂",  statuses: null },
   { key: "Pending",    label: "Pending",    emoji: "🕐",  statuses: ["Pending"] },
@@ -81,16 +107,15 @@ const FILTER_TABS = [
   { key: "Cancelled",  label: "Cancelled",  emoji: "✕",   statuses: ["Cancelled"] },
 ];
 
-// Accent colors for each pill (active state)
 const TAB_ACCENT = {
-  All:        { active: "#1d4ed8", light: "#eff6ff" },
-  Pending:    { active: "#d97706", light: "#fffbeb" },
-  Confirmed:  { active: "#2563eb", light: "#eff6ff" },
-  "Picked Up":{ active: "#0f766e", light: "#f0fdfa" },
+  All:         { active: "#1d4ed8", light: "#eff6ff" },
+  Pending:     { active: "#d97706", light: "#fffbeb" },
+  Confirmed:   { active: "#2563eb", light: "#eff6ff" },
+  "Picked Up": { active: "#0f766e", light: "#f0fdfa" },
   "In Transit":{ active: "#4f46e5", light: "#eef2ff" },
   "On The Way":{ active: "#ea580c", light: "#fff7ed" },
-  Delivered:  { active: "#16a34a", light: "#f0fdf4" },
-  Cancelled:  { active: "#dc2626", light: "#fef2f2" },
+  Delivered:   { active: "#16a34a", light: "#f0fdf4" },
+  Cancelled:   { active: "#dc2626", light: "#fef2f2" },
 };
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -119,9 +144,8 @@ const OrderStepper = ({ status }) => {
   const display = STEP_MAP[status] || status;
   if (display === "Cancelled" || display === "Returned") return null;
   const currentIdx = STEPS.indexOf(display);
-  // pill width = (screen - 2*padding - gaps) / 5
   const DOT = 28;
-  const LINE = (SW - 32 - DOT * 5 - 8) / 4; // distribute remaining space across 4 connectors
+  const LINE = (SW - 32 - DOT * 5 - 8) / 4;
 
   return (
     <View style={{ marginVertical: 14 }}>
@@ -175,12 +199,63 @@ const SummaryRow = ({ label, value, valueColor }) => (
   </View>
 );
 
+// ─── Download Button ──────────────────────────────────────────────────────────
+const DownloadButton = ({ label, emoji, color, bgColor, onPress, loading }) => (
+  <TouchableOpacity
+    onPress={onPress}
+    disabled={loading}
+    activeOpacity={0.75}
+    style={[
+      dlb.btn,
+      { backgroundColor: bgColor, opacity: loading ? 0.65 : 1 },
+    ]}
+  >
+    {loading
+      ? <ActivityIndicator size="small" color={color} style={{ marginRight: 6 }} />
+      : <Text style={{ fontSize: 14, marginRight: 4 }}>{emoji}</Text>}
+    <Text style={[dlb.txt, { color }]}>
+      {loading ? "Downloading…" : label}
+    </Text>
+  </TouchableOpacity>
+);
+const dlb = StyleSheet.create({
+  btn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: 10, borderRadius: 10, gap: 4,
+  },
+  txt: { fontSize: 12, fontWeight: "700" },
+});
+
 // ─── Order Detail ─────────────────────────────────────────────────────────────
 const OrderDetail = ({ order, onBack, onCancel, cancelling }) => {
   const sc_ = sc(order.status);
   const addr = order.shippingAddress || {};
   const driver = order.assignedDriver;
   const fullAddr = [addr.house, addr.road, addr.landmark, addr.city, addr.state, addr.pincode].filter(Boolean).join(", ");
+
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+
+  const handleDownload = async (type) => {
+    const setLoading = type === "invoice" ? setInvoiceLoading : setReceiptLoading;
+    setLoading(true);
+    try {
+      const uri = await downloadPdf(type, order.id, order.orderNumber);
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "application/pdf",
+          dialogTitle: type === "invoice" ? "Download Invoice" : "Download Receipt",
+        });
+      } else {
+        Alert.alert("Saved", `${type === "invoice" ? "Invoice" : "Receipt"} saved to documents.`);
+      }
+    } catch (err) {
+      Alert.alert("Error", `Failed to download ${type}. Please try again.`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
@@ -239,6 +314,8 @@ const OrderDetail = ({ order, onBack, onCancel, cancelling }) => {
           <Text style={dt.totalLabel}>Total Amount</Text>
           <Text style={dt.totalValue}>₹{Number(order.total || 0).toFixed(2)}</Text>
         </View>
+
+        {/* Payment Method */}
         <View style={dt.paymentBox}>
           <Text style={dt.paymentLabel}>PAYMENT METHOD</Text>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -251,6 +328,26 @@ const OrderDetail = ({ order, onBack, onCancel, cancelling }) => {
               </Text>
             </View>
           </View>
+        </View>
+
+        {/* ── Download Buttons ───────────────────────────────────────────── */}
+        <View style={dt.downloadRow}>
+          <DownloadButton
+            label="Download Receipt"
+            emoji="🧾"
+            color="#1d4ed8"
+            bgColor="#eff6ff"
+            loading={receiptLoading}
+            onPress={() => handleDownload("receipt")}
+          />
+          <DownloadButton
+            label="Download Invoice"
+            emoji="⬇"
+            color="#15803d"
+            bgColor="#f0fdf4"
+            loading={invoiceLoading}
+            onPress={() => handleDownload("invoice")}
+          />
         </View>
       </View>
 
@@ -326,6 +423,7 @@ const dt = StyleSheet.create({
   paymentMethod:{ fontSize: 15, fontWeight: "700", color: "#111" },
   payStatusBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6 },
   payStatusTxt: { fontSize: 12, fontWeight: "700" },
+  downloadRow:  { flexDirection: "row", gap: 10, marginTop: 14 },
   addrName:     { fontSize: 14, fontWeight: "700", color: "#111", marginBottom: 2 },
   addrMeta:     { fontSize: 12, color: "#6b7280", lineHeight: 20 },
   driverAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#f0fdf4", borderWidth: 2, borderColor: "#16a34a", alignItems: "center", justifyContent: "center" },
@@ -376,14 +474,12 @@ const li = StyleSheet.create({
 });
 
 // ─── Status Filter Grid ───────────────────────────────────────────────────────
-// 8 pills in 2 rows of 4, calculated to fill the full screen width — no scrolling.
 const PILL_GAP    = 8;
 const PILL_H_PAD  = 12;
 const PILL_WIDTH  = (SW - PILL_H_PAD * 2 - PILL_GAP * 3) / 4;
 
 const StatusFilterGrid = ({ activeKey, counts, onSelect }) => (
   <View style={fg.wrap}>
-    {/* Row 1 */}
     <View style={fg.row}>
       {FILTER_TABS.slice(0, 4).map(tab => {
         const active  = activeKey === tab.key;
@@ -402,9 +498,7 @@ const StatusFilterGrid = ({ activeKey, counts, onSelect }) => (
                 : { backgroundColor: "#fff", borderColor: "#e5e7eb" },
             ]}>
             <Text style={fg.emoji}>{tab.emoji}</Text>
-            <Text
-              numberOfLines={1}
-              style={[fg.label, active ? { color: "#fff" } : { color: "#374151" }]}>
+            <Text numberOfLines={1} style={[fg.label, active ? { color: "#fff" } : { color: "#374151" }]}>
               {tab.label}
             </Text>
             <View style={[fg.countBubble, active ? { backgroundColor: "rgba(255,255,255,0.25)" } : { backgroundColor: accent.light }]}>
@@ -414,7 +508,6 @@ const StatusFilterGrid = ({ activeKey, counts, onSelect }) => (
         );
       })}
     </View>
-    {/* Row 2 */}
     <View style={fg.row}>
       {FILTER_TABS.slice(4).map(tab => {
         const active  = activeKey === tab.key;
@@ -433,9 +526,7 @@ const StatusFilterGrid = ({ activeKey, counts, onSelect }) => (
                 : { backgroundColor: "#fff", borderColor: "#e5e7eb" },
             ]}>
             <Text style={fg.emoji}>{tab.emoji}</Text>
-            <Text
-              numberOfLines={1}
-              style={[fg.label, active ? { color: "#fff" } : { color: "#374151" }]}>
+            <Text numberOfLines={1} style={[fg.label, active ? { color: "#fff" } : { color: "#374151" }]}>
               {tab.label}
             </Text>
             <View style={[fg.countBubble, active ? { backgroundColor: "rgba(255,255,255,0.25)" } : { backgroundColor: accent.light }]}>
@@ -512,7 +603,6 @@ export default function OrderHistoryTab({ onBack }) {
     finally  { setCancelling(false); }
   };
 
-  // Count per filter key
   const counts = FILTER_TABS.reduce((acc, tab) => {
     acc[tab.key] = tab.statuses
       ? orders.filter(o => tab.statuses.includes(o.status)).length
@@ -520,13 +610,11 @@ export default function OrderHistoryTab({ onBack }) {
     return acc;
   }, {});
 
-  // Filtered list
   const activeTab     = FILTER_TABS.find(t => t.key === activeKey);
   const visibleOrders = activeTab?.statuses
     ? orders.filter(o => activeTab.statuses.includes(o.status))
     : orders;
 
-  // ── Loading detail ───────────────────────────────────────────────────────────
   if (detailLoad) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12, backgroundColor: "#f3f4f6" }}>
@@ -536,7 +624,6 @@ export default function OrderHistoryTab({ onBack }) {
     );
   }
 
-  // ── Order detail view ────────────────────────────────────────────────────────
   if (detailOrder) {
     return (
       <View style={{ flex: 1, backgroundColor: "#f3f4f6" }}>
@@ -550,11 +637,8 @@ export default function OrderHistoryTab({ onBack }) {
     );
   }
 
-  // ── Order list view ──────────────────────────────────────────────────────────
   return (
     <View style={{ flex: 1, backgroundColor: "#f3f4f6" }}>
-
-      {/* Fixed header: title only — compact */}
       <View style={oh.header}>
         <Text style={oh.heading}>My Orders</Text>
         {orders.length > 0 && (
@@ -564,13 +648,11 @@ export default function OrderHistoryTab({ onBack }) {
         )}
       </View>
 
-      {/* Status filter grid — always fully visible, no scrolling */}
       <StatusFilterGrid
         activeKey={activeKey}
         counts={counts}
         onSelect={setActiveKey} />
 
-      {/* Order list — only this scrolls */}
       <ScrollView
         contentContainerStyle={{ padding: 12, paddingBottom: 30 }}
         showsVerticalScrollIndicator={false}>

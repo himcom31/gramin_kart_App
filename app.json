@@ -44,7 +44,8 @@
           "photosPermission": "Allow $(BUNDLE_IDENTIFIER) to access your photos to update your profile picture.",
           "cameraPermission": "Allow $(BUNDLE_IDENTIFIER) to access your camera to take a profile picture."
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

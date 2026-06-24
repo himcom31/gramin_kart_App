@@ -235,8 +235,15 @@ export default function UserProfile() {
       // ← Append image if user picked one
       if (localImg) {
         const filename = localImg.split("/").pop();
-        const match    = /\.(\w+)$/.exec(filename);
-        const type     = match ? `image/${match[1].toLowerCase()}` : "image/jpeg";
+        const ext = filename.split(".").pop().toLowerCase();
+const mimeMap = {
+  jpg:  "image/jpeg",
+  jpeg: "image/jpeg",
+  png:  "image/png",
+  webp: "image/webp",
+  heic: "image/heic",
+};
+const type = mimeMap[ext] || "image/jpeg";
         fd.append("image", { uri: localImg, name: filename, type });
       }
 
@@ -342,7 +349,7 @@ export default function UserProfile() {
           <Field label="Mobile Number">
             <View style={[s.input, { flexDirection: "row", alignItems: "center", padding: 0 }]}>
               <View style={s.phonePrefix}>
-                <Text style={{ color: "#64748b", fontSize: 13 }}>+00</Text>
+                <Text style={{ color: "#64748b", fontSize: 13 }}>+91</Text>
               </View>
               <TextInput
                 value={form.phone}

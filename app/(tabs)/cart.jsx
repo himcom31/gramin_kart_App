@@ -403,7 +403,7 @@ export default function CartScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const hd = StyleSheet.create({
-  bar:      { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 14, backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.divider },
+  bar:      { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 14, backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.divider,paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight + 10 : 14, },
   title:    { fontSize: 18, fontWeight: '800', color: C.text },
   badge:    { backgroundColor: C.greenLight, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
   badgeTxt: { fontSize: 12, fontWeight: '700', color: C.green },
