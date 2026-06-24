@@ -485,7 +485,6 @@ const { tab: initialTab } = useLocalSearchParams();
 // ✅ useState ko yeh karo
 const [activeTab, setActiveTab] = useState(initialTab || "dashboard");
 
-  const [activeTab,        setActiveTab]        = useState("dashboard");
   const [profile,          setProfile]          = useState(null);
   const [cartData,         setCartData]         = useState({ items: [] });
   const [wishlistData,     setWishlistData]     = useState({ products: [] });
