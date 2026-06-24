@@ -9,7 +9,7 @@
       "distribution": "internal",
        "channel": "development",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://aquamarine-ant-659496.hostingersite.com"
+        "EXPO_PUBLIC_API_URL": "https://graminkcart.in"
       }
     },
     "preview": {
@@ -19,14 +19,14 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://aquamarine-ant-659496.hostingersite.com"
+        "EXPO_PUBLIC_API_URL": "https://graminkcart.in"
       }
     },
     "production": {
       "autoIncrement": true,
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://aquamarine-ant-659496.hostingersite.com"
+        "EXPO_PUBLIC_API_URL": "https://graminkcart.in"
       }
     }
   },

@@ -47,8 +47,8 @@ const downloadPdf = async (type, orderId, orderNumber) => {
   const token = await getToken();
   const endpoint =
     type === "invoice"
-      ? `${API_URL}/api/invoice/${orderId}/invoice?download=1`
-      : `${API_URL}/api/receipt/${orderId}/receipt?download=1`;
+      ? `${API_URL}/api/invoice/${orderId}/user/invoice?download=1`
+      : `${API_URL}/api/receipt/${orderId}/user/receipt?download=1`;
 
   const filename = type === "invoice"
     ? `Invoice-${orderNumber || orderId}.pdf`
