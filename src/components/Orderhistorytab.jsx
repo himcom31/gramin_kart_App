@@ -39,7 +39,11 @@ const apiFetchOrder = async (id) => {
 };
 const apiCancelOrder = async (id) => {
   const headers = await authHdr();
-  return fetch(`${API_URL}/api/orders/my/${id}/cancel`, { method: "PATCH", headers }).then(r => r.json());
+  return fetch(`${API_URL}/api/orders/my/${id}/cancel`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({}), // ✅ fixes everything
+  }).then(r => r.json());
 };
 
 // ─── PDF Download Helper ──────────────────────────────────────────────────────

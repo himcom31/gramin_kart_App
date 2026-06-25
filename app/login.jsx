@@ -1,3 +1,4 @@
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -16,6 +17,7 @@ import {
   View
 } from 'react-native';
 import { useAuth } from '../src/context/AuthContext';
+
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -67,7 +69,11 @@ function FloatingInput({ label, value, onChangeText, secureTextEntry, isPassword
       />
       {isPassword && (
         <TouchableOpacity style={styles.eyeBtn} onPress={onTogglePw} activeOpacity={0.7}>
-          <Text style={styles.eyeIcon}>{showPw ? '🙈' : '👁️'}</Text>
+          <MaterialIcons
+            name={showPw ? "visibility-off" : "visibility"}
+            size={20}
+            color="#999"
+          />
         </TouchableOpacity>
       )}
     </View>
@@ -89,7 +95,12 @@ function CountryPicker({ value, onChange }) {
         <Text style={[styles.countryValue, !value && styles.countryPlaceholder]}>
           {value || 'Select country'}
         </Text>
-        <Text style={styles.countryChevron}>▼</Text>
+        <MaterialIcons
+          name="keyboard-arrow-down"
+          size={18}
+          color="#999"
+          style={{ position: "absolute", right: 14 }}
+        />
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
@@ -114,7 +125,9 @@ function CountryPicker({ value, onChange }) {
                     {item}
                   </Text>
                   {item === value && (
-                    <Text style={styles.countryItemCheck}>✓</Text>
+
+                    <MaterialIcons name="check" size={18} color="#2d9e2d" />
+
                   )}
                 </TouchableOpacity>
               )}
@@ -128,7 +141,7 @@ function CountryPicker({ value, onChange }) {
 
 // ─── Animated Logo ──────────────────────────────────────────────────────────
 function AnimatedLogo() {
-  const spinAnim  = useRef(new Animated.Value(0)).current;
+  const spinAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -144,7 +157,7 @@ function AnimatedLogo() {
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.15, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1,    duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
   }, []);
@@ -189,18 +202,18 @@ function AnimatedLogo() {
 
 // ─── Main Screen ────────────────────────────────────────────────────────────
 export default function LoginScreen() {
-  const router     = useRouter();
-  const { login }  = useAuth();
+  const router = useRouter();
+  const { login } = useAuth();
 
-  const [mode,       setMode]       = useState('login');
+  const [mode, setMode] = useState('login');
   const [identifier, setIdentifier] = useState('');
-  const [password,   setPassword]   = useState('');
-  const [fullName,   setFullName]   = useState('');
-  const [phone,      setPhone]      = useState('');
-  const [email,      setEmail]      = useState('');
-  const [country,    setCountry]    = useState('');
-  const [loading,    setLoading]    = useState(false);
-  const [showPw,     setShowPw]     = useState(false);
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [country, setCountry] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPw, setShowPw] = useState(false);
   const [pwStrength, setPwStrength] = useState(0);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
@@ -214,11 +227,11 @@ export default function LoginScreen() {
 
   const shake = () => {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10,  duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
       Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 6,   duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -6,  duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0,   duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 6, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -6, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
     ]).start();
   };
 
@@ -226,7 +239,7 @@ export default function LoginScreen() {
     if (!identifier.trim() || !password.trim()) { shake(); Alert.alert('Missing fields', 'Please fill in all fields.'); return; }
     setLoading(true);
     try {
-      const res  = await fetch(`${API_URL}/api/user/login`, {
+      const res = await fetch(`${API_URL}/api/user/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: identifier.trim(), password }),
@@ -250,7 +263,7 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      const res  = await fetch(`${API_URL}/api/user/register`, {
+      const res = await fetch(`${API_URL}/api/user/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fullName, country, email, phone: phone.replace(/\D/g, ''), password }),
@@ -347,7 +360,7 @@ export default function LoginScreen() {
             </>
           ) : (
 
-          /* ── Register Form ── */
+            /* ── Register Form ── */
             <>
               <FloatingInput
                 label="Full name"
@@ -420,12 +433,17 @@ export default function LoginScreen() {
 
           {/* Trust badges */}
           <View style={styles.trustRow}>
-            {[['🔒', 'Secure'], ['✅', 'Trusted'], ['🌱', '100% Fresh']].map(([icon, label]) => (
+            {[
+              { icon: <MaterialIcons name="lock" size={20} color="#2d9e2d" />, label: "Secure" },
+              { icon: <MaterialIcons name="verified" size={20} color="#2d9e2d" />, label: "Trusted" },
+              { icon: <MaterialCommunityIcons name="leaf" size={20} color="#2d9e2d" />, label: "100% Fresh" },
+            ].map(({ icon, label }) => (
               <View key={label} style={styles.trustItem}>
-                <Text style={styles.trustIcon}>{icon}</Text>
+                {icon}
                 <Text style={styles.trustLabel}>{label}</Text>
               </View>
             ))}
+
           </View>
 
         </Animated.View>
@@ -457,7 +475,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.07)', bottom: -40, left: 10,
   },
   heroTitle: { fontSize: 26, fontWeight: '700', color: '#fff', letterSpacing: -0.5, marginTop: 6 },
-  heroSub:   { fontSize: 11, color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, marginTop: 4 },
+  heroSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, marginTop: 4 },
 
   // Animated logo
   logoWrapper: {
@@ -497,29 +515,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row', backgroundColor: '#f5f7f5',
     borderRadius: 12, padding: 4, marginBottom: 24, gap: 4,
   },
-  tab:            { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 9 },
-  tabActive:      { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 },
-  tabText:        { fontSize: 14, fontWeight: '500', color: '#999' },
-  tabTextActive:  { color: '#2d9e2d', fontWeight: '700' },
+  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 9 },
+  tabActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 },
+  tabText: { fontSize: 14, fontWeight: '500', color: '#999' },
+  tabTextActive: { color: '#2d9e2d', fontWeight: '700' },
 
   // Floating input
-inputWrap: {
-  borderWidth: 1.5, borderColor: '#e5e7e5',
-  borderRadius: 12, paddingHorizontal: 14,
-  marginBottom: 14, height: 52,
-  justifyContent: 'center',
-},
-inputWrapFocused: { borderColor: '#2d9e2d' },
-floatLabel:  {},
-floatInput:  { fontSize: 14, color: '#222', padding: 0 },
-  eyeBtn:      { position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' },
-  eyeIcon:     { fontSize: 17 },
+  inputWrap: {
+    borderWidth: 1.5, borderColor: '#e5e7e5',
+    borderRadius: 12, paddingHorizontal: 14,
+    marginBottom: 14, height: 52,
+    justifyContent: 'center',
+  },
+  inputWrapFocused: { borderColor: '#2d9e2d' },
+  floatLabel: {},
+  floatInput: { fontSize: 14, color: '#222', padding: 0 },
+  eyeBtn: { position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' },
+  
 
   // Country picker
-  countryLabel:       { fontSize: 11, color: '#999', marginBottom: 4 },
-  countryValue:       { fontSize: 14, color: '#222' },
+  countryLabel: { fontSize: 11, color: '#999', marginBottom: 4 },
+  countryValue: { fontSize: 14, color: '#222' },
   countryPlaceholder: { color: '#b0b8b0' },
-  countryChevron:     { position: 'absolute', right: 14, fontSize: 11, color: '#999' },
+  
 
   // Country modal
   modalOverlay: {
@@ -537,38 +555,38 @@ floatInput:  { fontSize: 14, color: '#222', padding: 0 },
     borderBottomWidth: 0.5, borderBottomColor: '#eee',
   },
   modalTitle: { fontSize: 15, fontWeight: '600', color: '#222' },
-  modalDone:  { fontSize: 14, color: '#2d9e2d', fontWeight: '600' },
+  modalDone: { fontSize: 14, color: '#2d9e2d', fontWeight: '600' },
   countryItem: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingVertical: 14,
     borderBottomWidth: 0.5, borderBottomColor: '#f5f5f5',
   },
-  countryItemText:     { fontSize: 14, color: '#333' },
+  countryItemText: { fontSize: 14, color: '#333' },
   countryItemSelected: { color: '#2d9e2d', fontWeight: '600' },
-  countryItemCheck:    { fontSize: 14, color: '#2d9e2d' },
+  
 
   // Forgot
-  forgotRow:  { alignItems: 'flex-end', marginBottom: 16, marginTop: -4 },
+  forgotRow: { alignItems: 'flex-end', marginBottom: 16, marginTop: -4 },
   forgotText: { fontSize: 12, color: '#2d9e2d', fontWeight: '500' },
 
   // Button
-  btnMain:     { backgroundColor: '#2d9e2d', borderRadius: 12, paddingVertical: 15, alignItems: 'center', marginTop: 4 },
+  btnMain: { backgroundColor: '#2d9e2d', borderRadius: 12, paddingVertical: 15, alignItems: 'center', marginTop: 4 },
   btnDisabled: { opacity: 0.55 },
-  btnText:     { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.3 },
+  btnText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.3 },
 
   // Switch row
-  switchRow:  { textAlign: 'center', fontSize: 13, color: '#999', marginTop: 16 },
+  switchRow: { textAlign: 'center', fontSize: 13, color: '#999', marginTop: 16 },
   switchLink: { color: '#2d9e2d', fontWeight: '600' },
 
   // Strength meter
   strengthWrap: { marginTop: -6, marginBottom: 14 },
-  strengthBar:  { flexDirection: 'row', gap: 4, height: 4, marginBottom: 4 },
-  strengthSeg:  { flex: 1, borderRadius: 2 },
-  strengthLabel:{ fontSize: 11, fontWeight: '500' },
+  strengthBar: { flexDirection: 'row', gap: 4, height: 4, marginBottom: 4 },
+  strengthSeg: { flex: 1, borderRadius: 2 },
+  strengthLabel: { fontSize: 11, fontWeight: '500' },
 
   // Trust badges
-  trustRow:  { flexDirection: 'row', justifyContent: 'center', gap: 24, marginTop: 20, paddingTop: 16, borderTopWidth: 0.5, borderTopColor: '#f0f0f0' },
+  trustRow: { flexDirection: 'row', justifyContent: 'center', gap: 24, marginTop: 20, paddingTop: 16, borderTopWidth: 0.5, borderTopColor: '#f0f0f0' },
   trustItem: { alignItems: 'center', gap: 4 },
-  trustIcon: { fontSize: 20 },
-  trustLabel:{ fontSize: 11, color: '#bbb' },
+  
+  trustLabel: { fontSize: 11, color: '#bbb' },
 });

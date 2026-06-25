@@ -4,6 +4,11 @@
 
 import { useLocalSearchParams, useRouter } from "expo-router";
 
+import {
+  Ionicons,
+  MaterialCommunityIcons,
+  MaterialIcons
+} from '@expo/vector-icons';
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -20,6 +25,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Storage as store } from "../api/storage";
@@ -36,17 +42,17 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const FK = {
-  blue:       "#16a34a",
-  blueDark:   "#13873d",
-  blueLight:  "#E8F0FD",
-  green:      "#388E3C",
-  text:       "#212121",
-  textSub:    "#878787",
-  textLight:  "#BDBDBD",
-  divider:    "#F0F0F0",
-  bg:         "#F1F3F6",
-  white:      "#FFFFFF",
-  badge:      "#FB641B",
+  blue: "#16a34a",
+  blueDark: "#13873d",
+  blueLight: "#E8F0FD",
+  green: "#388E3C",
+  text: "#212121",
+  textSub: "#878787",
+  textLight: "#BDBDBD",
+  divider: "#F0F0F0",
+  bg: "#F1F3F6",
+  white: "#FFFFFF",
+  badge: "#FB641B",
 };
 
 // ─── API ──────────────────────────────────────────────────────────────────────
@@ -55,25 +61,25 @@ const authHdr = async () => ({
   "Content-Type": "application/json",
   Authorization: `Bearer ${await getToken()}`,
 });
-const apiFetch  = async (path)       => fetch(`${API_URL}${path}`, { headers: await authHdr() }).then(r => r.json());
-const apiPost   = async (path, body) => fetch(`${API_URL}${path}`, { method: "POST",   headers: await authHdr(), body: JSON.stringify(body) }).then(r => r.json());
-const apiPut    = async (path, body) => fetch(`${API_URL}${path}`, { method: "PUT",    headers: await authHdr(), body: JSON.stringify(body) }).then(r => r.json());
-const apiDelete = async (path)       => fetch(`${API_URL}${path}`, { method: "DELETE", headers: await authHdr() }).then(r => r.json());
-const apiPatch  = async (path)       => fetch(`${API_URL}${path}`, { method: "PATCH",  headers: await authHdr() }).then(r => r.json());
+const apiFetch = async (path) => fetch(`${API_URL}${path}`, { headers: await authHdr() }).then(r => r.json());
+const apiPost = async (path, body) => fetch(`${API_URL}${path}`, { method: "POST", headers: await authHdr(), body: JSON.stringify(body) }).then(r => r.json());
+const apiPut = async (path, body) => fetch(`${API_URL}${path}`, { method: "PUT", headers: await authHdr(), body: JSON.stringify(body) }).then(r => r.json());
+const apiDelete = async (path) => fetch(`${API_URL}${path}`, { method: "DELETE", headers: await authHdr() }).then(r => r.json());
+const apiPatch = async (path) => fetch(`${API_URL}${path}`, { method: "PATCH", headers: await authHdr() }).then(r => r.json());
 
-const fetchCart           = () => apiFetch("/api/cart");
-const fetchWishlist       = () => apiFetch("/api/wishlist");
-const fetchOrders         = () => apiFetch("/api/orders/my");
-const fetchProfile        = () => apiFetch("/api/user/me");
-const fetchAddresses      = () => apiFetch("/api/address");
+const fetchCart = () => apiFetch("/api/cart");
+const fetchWishlist = () => apiFetch("/api/wishlist");
+const fetchOrders = () => apiFetch("/api/orders/my");
+const fetchProfile = () => apiFetch("/api/user/me");
+const fetchAddresses = () => apiFetch("/api/address");
 const fetchRecentlyViewed = () => apiFetch("/api/user/recently-viewed").catch(() => ({ products: [] }));
 
 const apiUpdateCartItem = (productId, qty) => apiPut(`/api/cart/update/${productId}`, { quantity: qty });
-const apiRemoveFromCart = (productId)      => apiDelete(`/api/cart/remove/${productId}`);
-const apiAddAddress     = (data)           => apiPost("/api/address", data);
-const apiUpdateAddress  = (id, data)       => apiPut(`/api/address/${id}`, data);
-const apiDeleteAddress  = (id)             => apiDelete(`/api/address/${id}`);
-const apiSetDefault     = (id)             => apiPatch(`/api/address/${id}/set-default`);
+const apiRemoveFromCart = (productId) => apiDelete(`/api/cart/remove/${productId}`);
+const apiAddAddress = (data) => apiPost("/api/address", data);
+const apiUpdateAddress = (id, data) => apiPut(`/api/address/${id}`, data);
+const apiDeleteAddress = (id) => apiDelete(`/api/address/${id}`);
+const apiSetDefault = (id) => apiPatch(`/api/address/${id}/set-default`);
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 const Toast = ({ message, type, onDone }) => {
@@ -97,16 +103,17 @@ const ts = StyleSheet.create({
 const SubPageHeader = ({ title, onBack, topInset = 0 }) => (
   <View style={[sph.bar, { paddingTop: topInset + 14 }]}>
     <TouchableOpacity onPress={onBack} style={sph.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-      <Text style={sph.arrow}>←</Text>
+      <MaterialIcons name="arrow-back" size={22} color={FK.white} />
+
     </TouchableOpacity>
     <Text style={sph.title}>{title}</Text>
   </View>
 );
 const sph = StyleSheet.create({
-  bar:     { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingBottom: 14, backgroundColor: FK.blue },
+  bar: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingBottom: 14, backgroundColor: FK.blue },
   backBtn: { width: 32, alignItems: "center" },
-  arrow:   { fontSize: 22, color: FK.white },
-  title:   { fontSize: 16, fontWeight: "700", color: FK.white, flex: 1 },
+
+  title: { fontSize: 16, fontWeight: "700", color: FK.white, flex: 1 },
 });
 
 // ─── Section Header ───────────────────────────────────────────────────────────
@@ -117,27 +124,28 @@ const SectionHeader = ({ title, action, onAction }) => (
   </View>
 );
 const sh = StyleSheet.create({
-  row:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-  title:  { fontSize: 16, fontWeight: "700", color: FK.text },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  title: { fontSize: 16, fontWeight: "700", color: FK.text },
   action: { fontSize: 13, fontWeight: "600", color: FK.blue },
 });
 
 // ─── Cart Item Row ────────────────────────────────────────────────────────────
 const CartItemRow = ({ item, onQtyChange, onRemove }) => {
-  const product  = item.product || item;
-  const name     = product.name || "Product";
-  const price    = Number(product.sellingPrice ?? product.discountPrice ?? product.price ?? 0);
+  const product = item.product || item;
+  const name = product.name || "Product";
+  const price = Number(product.sellingPrice ?? product.discountPrice ?? product.price ?? 0);
   const oldPrice = Number(product.mrp ?? product.oldPrice ?? product.buyingPrice ?? 0);
-  const image    = product.thumbnail || product.image || product.images?.[0];
+  const image = product.thumbnail || product.image || product.images?.[0];
   const discount = oldPrice > price ? Math.round((1 - price / oldPrice) * 100) : null;
-  const qty      = item.quantity || 1;
+  const qty = item.quantity || 1;
 
   return (
     <View style={ci.row}>
       <View style={ci.imgWrap}>
         {image
           ? <Image source={{ uri: image }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
-          : <Text style={{ fontSize: 22 }}>🛒</Text>}
+          : <MaterialIcons name="shopping-cart" size={22} color={FK.textLight} />}
+
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={2} style={ci.name}>{name}</Text>
@@ -160,38 +168,38 @@ const CartItemRow = ({ item, onQtyChange, onRemove }) => {
   );
 };
 const ci = StyleSheet.create({
-  row:       { flexDirection: "row", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: FK.divider, alignItems: "center" },
-  imgWrap:   { width: 60, height: 60, borderRadius: 4, overflow: "hidden", backgroundColor: "#F9F9F9", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: FK.divider },
-  name:      { fontSize: 13, fontWeight: "500", color: FK.text, lineHeight: 18 },
-  priceRow:  { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap" },
-  price:     { fontSize: 14, fontWeight: "700", color: FK.text },
-  oldPrice:  { fontSize: 11, color: FK.textSub, textDecorationLine: "line-through" },
-  discTxt:   { fontSize: 12, fontWeight: "600", color: FK.green },
-  qtyGroup:  { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: FK.textLight, borderRadius: 4, overflow: "hidden" },
-  qtyBtn:    { width: 28, height: 28, alignItems: "center", justifyContent: "center", backgroundColor: FK.white },
+  row: { flexDirection: "row", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: FK.divider, alignItems: "center" },
+  imgWrap: { width: 60, height: 60, borderRadius: 4, overflow: "hidden", backgroundColor: "#F9F9F9", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: FK.divider },
+  name: { fontSize: 13, fontWeight: "500", color: FK.text, lineHeight: 18 },
+  priceRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap" },
+  price: { fontSize: 14, fontWeight: "700", color: FK.text },
+  oldPrice: { fontSize: 11, color: FK.textSub, textDecorationLine: "line-through" },
+  discTxt: { fontSize: 12, fontWeight: "600", color: FK.green },
+  qtyGroup: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: FK.textLight, borderRadius: 4, overflow: "hidden" },
+  qtyBtn: { width: 28, height: 28, alignItems: "center", justifyContent: "center", backgroundColor: FK.white },
   qtyBtnTxt: { fontSize: 18, color: FK.text, lineHeight: 22 },
-  qty:       { width: 28, textAlign: "center", fontSize: 13, fontWeight: "600", color: FK.text, borderLeftWidth: 1, borderRightWidth: 1, borderColor: FK.textLight, paddingVertical: 4 },
+  qty: { width: 28, textAlign: "center", fontSize: 13, fontWeight: "600", color: FK.text, borderLeftWidth: 1, borderRightWidth: 1, borderColor: FK.textLight, paddingVertical: 4 },
 });
 
 // ─── Address Form Modal ───────────────────────────────────────────────────────
 const EMPTY_FORM = { name: "", phone: "", altPhone: "", pincode: "", state: "", city: "", house: "", road: "", landmark: "", type: "Home", isDefault: false };
 
 const AddressFormModal = ({ initial, onSave, onClose, saving }) => {
-  const [form,     setForm]     = useState(initial || EMPTY_FORM);
-  const [errors,   setErrors]   = useState({});
+  const [form, setForm] = useState(initial || EMPTY_FORM);
+  const [errors, setErrors] = useState({});
   const [locating, setLocating] = useState(false);
 
   const set = (field, val) => setForm(f => ({ ...f, [field]: val }));
 
   const validate = () => {
     const e = {};
-    if (!form.name.trim())    e.name    = "Full name is required";
-    if (!form.phone.trim())   e.phone   = "Phone is required";
+    if (!form.name.trim()) e.name = "Full name is required";
+    if (!form.phone.trim()) e.phone = "Phone is required";
     if (!form.pincode.trim()) e.pincode = "Pincode is required";
-    if (!form.state.trim())   e.state   = "State is required";
-    if (!form.city.trim())    e.city    = "City is required";
-    if (!form.house.trim())   e.house   = "House/Building is required";
-    if (!form.road.trim())    e.road    = "Road/Area is required";
+    if (!form.state.trim()) e.state = "State is required";
+    if (!form.city.trim()) e.city = "City is required";
+    if (!form.house.trim()) e.house = "House/Building is required";
+    if (!form.road.trim()) e.road = "Road/Area is required";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -199,15 +207,15 @@ const AddressFormModal = ({ initial, onSave, onClose, saving }) => {
   const useMyLocation = async () => {
     setLocating(true);
     try {
-      const res  = await fetch("https://ipapi.co/json/");
+      const res = await fetch("https://ipapi.co/json/");
       const data = await res.json();
       setForm(f => ({
         ...f,
         pincode: data.postal || f.pincode,
-        state:   data.region || f.state,
-        city:    data.city   || f.city,
+        state: data.region || f.state,
+        city: data.city || f.city,
       }));
-    } catch {}
+    } catch { }
     finally { setLocating(false); }
   };
 
@@ -219,7 +227,7 @@ const AddressFormModal = ({ initial, onSave, onClose, saving }) => {
         <View style={af.sheet}>
           <View style={af.header}>
             <TouchableOpacity onPress={onClose} style={af.backBtn}>
-              <Text style={{ fontSize: 20, color: FK.white }}>←</Text>
+              <MaterialIcons name="arrow-back" size={22} color={FK.white} />
             </TouchableOpacity>
             <Text style={af.headerTxt}>{initial ? "Edit Address" : "Add New Address"}</Text>
           </View>
@@ -242,7 +250,10 @@ const AddressFormModal = ({ initial, onSave, onClose, saving }) => {
                 <TouchableOpacity onPress={useMyLocation} disabled={locating} style={af.locBtn}>
                   {locating
                     ? <ActivityIndicator color={FK.blue} size="small" />
-                    : <Text style={af.locBtnTxt}>📍 Use My Location</Text>}
+                    : <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                      <MaterialIcons name="my-location" size={14} color={FK.blue} />
+                      <Text style={af.locBtnTxt}>Use My Location</Text>
+                    </View>}
                 </TouchableOpacity>
               </View>
             </View>
@@ -276,7 +287,11 @@ const AddressFormModal = ({ initial, onSave, onClose, saving }) => {
               {["Home", "Work", "Other"].map(t => (
                 <TouchableOpacity key={t} onPress={() => set("type", t)}
                   style={[af.typeBtn, form.type === t && af.typeBtnActive]}>
-                  <Text style={{ fontSize: 16 }}>{t === "Home" ? "🏠" : t === "Work" ? "💼" : "📍"}</Text>
+                  {t === "Home"
+                    ? <MaterialIcons name="home" size={18} color={form.type === t ? FK.blue : FK.textSub} />
+                    : t === "Work"
+                      ? <MaterialIcons name="work" size={18} color={form.type === t ? FK.blue : FK.textSub} />
+                      : <MaterialIcons name="location-on" size={18} color={form.type === t ? FK.blue : FK.textSub} />}
                   <Text style={[af.typeTxt, form.type === t && { color: FK.blue, fontWeight: "700" }]}>{t}</Text>
                 </TouchableOpacity>
               ))}
@@ -284,7 +299,8 @@ const AddressFormModal = ({ initial, onSave, onClose, saving }) => {
 
             <TouchableOpacity onPress={() => set("isDefault", !form.isDefault)} style={af.checkRow}>
               <View style={[af.checkbox, form.isDefault && af.checkboxOn]}>
-                {form.isDefault && <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>✓</Text>}
+                {form.isDefault && <MaterialIcons name="check" size={12} color="#fff" />}
+
               </View>
               <Text style={af.checkLbl}>Make this my default address</Text>
             </TouchableOpacity>
@@ -302,37 +318,42 @@ const AddressFormModal = ({ initial, onSave, onClose, saving }) => {
   );
 };
 const af = StyleSheet.create({
-  overlay:       { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
-  sheet:         { backgroundColor: FK.white, maxHeight: "95%" },
-  header:        { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 16, paddingVertical: 14, backgroundColor: FK.blue },
-  backBtn:       { width: 30, alignItems: "center" },
-  headerTxt:     { fontSize: 16, fontWeight: "700", color: FK.white },
-  body:          { padding: 16, paddingBottom: 8 },
-  footer:        { padding: 16, borderTopWidth: 1, borderTopColor: FK.divider },
-  lbl:           { fontSize: 12, fontWeight: "600", color: FK.textSub, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 },
-  input:         { borderWidth: 1, borderColor: "#D0D0D0", borderRadius: 4, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: FK.text, backgroundColor: FK.white },
-  err:           { fontSize: 11, color: "#C62828", marginTop: 3 },
-  locBtn:        { borderWidth: 1.5, borderColor: FK.blue, borderRadius: 4, paddingVertical: 10, alignItems: "center", justifyContent: "center" },
-  locBtnTxt:     { color: FK.blue, fontSize: 12, fontWeight: "700" },
-  typeBtn:       { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 9, borderWidth: 1.5, borderColor: "#D0D0D0", borderRadius: 4, backgroundColor: FK.white },
+  overlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
+  sheet: { backgroundColor: FK.white, maxHeight: "95%" },
+  header: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 16, paddingVertical: 14, backgroundColor: FK.blue },
+  backBtn: { width: 30, alignItems: "center" },
+  headerTxt: { fontSize: 16, fontWeight: "700", color: FK.white },
+  body: { padding: 16, paddingBottom: 8 },
+  footer: { padding: 16, borderTopWidth: 1, borderTopColor: FK.divider },
+  lbl: { fontSize: 12, fontWeight: "600", color: FK.textSub, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 },
+  input: { borderWidth: 1, borderColor: "#D0D0D0", borderRadius: 4, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: FK.text, backgroundColor: FK.white },
+  err: { fontSize: 11, color: "#C62828", marginTop: 3 },
+  locBtn: { borderWidth: 1.5, borderColor: FK.blue, borderRadius: 4, paddingVertical: 10, alignItems: "center", justifyContent: "center" },
+  locBtnTxt: { color: FK.blue, fontSize: 12, fontWeight: "700" },
+  typeBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 9, borderWidth: 1.5, borderColor: "#D0D0D0", borderRadius: 4, backgroundColor: FK.white },
   typeBtnActive: { borderColor: FK.blue, backgroundColor: FK.blueLight },
-  typeTxt:       { fontSize: 12, fontWeight: "600", color: FK.textSub },
-  checkRow:      { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 16, marginBottom: 8 },
-  checkbox:      { width: 18, height: 18, borderRadius: 3, borderWidth: 2, borderColor: "#D0D0D0", alignItems: "center", justifyContent: "center" },
-  checkboxOn:    { backgroundColor: FK.blue, borderColor: FK.blue },
-  checkLbl:      { fontSize: 14, color: FK.text },
-  saveBtn:       { backgroundColor: FK.badge, borderRadius: 4, paddingVertical: 14, alignItems: "center", justifyContent: "center" },
-  saveBtnTxt:    { color: "#fff", fontSize: 14, fontWeight: "800", letterSpacing: 1 },
+  typeTxt: { fontSize: 12, fontWeight: "600", color: FK.textSub },
+  checkRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 16, marginBottom: 8 },
+  checkbox: { width: 18, height: 18, borderRadius: 3, borderWidth: 2, borderColor: "#D0D0D0", alignItems: "center", justifyContent: "center" },
+  checkboxOn: { backgroundColor: FK.blue, borderColor: FK.blue },
+  checkLbl: { fontSize: 14, color: FK.text },
+  saveBtn: { backgroundColor: FK.badge, borderRadius: 4, paddingVertical: 14, alignItems: "center", justifyContent: "center" },
+  saveBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "800", letterSpacing: 1 },
 });
 
 // ─── Address Card ─────────────────────────────────────────────────────────────
 const AddressCard = ({ addr, onEdit, onDelete, onSetDefault, deletingId, settingDefaultId }) => {
   const fullAddr = [addr.house, addr.road, addr.landmark, addr.city, addr.state, addr.pincode].filter(Boolean).join(", ");
-  const emoji    = addr.type === "Home" ? "🏠" : addr.type === "Work" ? "💼" : "📍";
   return (
     <View style={[ac.card, addr.isDefault && ac.cardDefault]}>
       <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
-        <Text style={{ fontSize: 22, marginTop: 2 }}>{emoji}</Text>
+        <View style={{ marginTop: 2 }}>
+          {addr.type === "Home"
+            ? <MaterialIcons name="home" size={22} color={FK.blue} />
+            : addr.type === "Work"
+              ? <MaterialIcons name="work" size={22} color={FK.blue} />
+              : <MaterialIcons name="location-on" size={22} color={FK.blue} />}
+        </View>
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
             <Text style={ac.name}>{addr.name}</Text>
@@ -370,29 +391,29 @@ const AddressCard = ({ addr, onEdit, onDelete, onSetDefault, deletingId, setting
   );
 };
 const ac = StyleSheet.create({
-  card:             { backgroundColor: FK.white, borderWidth: 1, borderColor: FK.divider, borderRadius: 4, padding: 14, marginBottom: 10 },
-  cardDefault:      { borderColor: FK.blue, borderWidth: 1.5 },
-  name:             { fontSize: 14, fontWeight: "700", color: FK.text },
-  typeBadge:        { backgroundColor: FK.textSub, borderRadius: 3, paddingHorizontal: 7, paddingVertical: 2 },
+  card: { backgroundColor: FK.white, borderWidth: 1, borderColor: FK.divider, borderRadius: 4, padding: 14, marginBottom: 10 },
+  cardDefault: { borderColor: FK.blue, borderWidth: 1.5 },
+  name: { fontSize: 14, fontWeight: "700", color: FK.text },
+  typeBadge: { backgroundColor: FK.textSub, borderRadius: 3, paddingHorizontal: 7, paddingVertical: 2 },
   typeBadgeDefault: { backgroundColor: FK.blue },
-  typeBadgeTxt:     { color: "#fff", fontSize: 10, fontWeight: "700" },
-  defaultLbl:       { fontSize: 11, fontWeight: "700", color: FK.blue },
-  phone:            { fontSize: 13, color: FK.textSub, marginBottom: 3 },
-  addr:             { fontSize: 13, color: FK.text, lineHeight: 19 },
-  actions:          { flexDirection: "row", alignItems: "center", marginTop: 10 },
-  actionBtn:        { paddingHorizontal: 10, paddingVertical: 4 },
-  actionBtnTxt:     { fontSize: 12, fontWeight: "700", color: FK.blue },
-  actionDivider:    { width: 1, height: 16, backgroundColor: FK.divider },
+  typeBadgeTxt: { color: "#fff", fontSize: 10, fontWeight: "700" },
+  defaultLbl: { fontSize: 11, fontWeight: "700", color: FK.blue },
+  phone: { fontSize: 13, color: FK.textSub, marginBottom: 3 },
+  addr: { fontSize: 13, color: FK.text, lineHeight: 19 },
+  actions: { flexDirection: "row", alignItems: "center", marginTop: 10 },
+  actionBtn: { paddingHorizontal: 10, paddingVertical: 4 },
+  actionBtnTxt: { fontSize: 12, fontWeight: "700", color: FK.blue },
+  actionDivider: { width: 1, height: 16, backgroundColor: FK.divider },
 });
 
 // ─── Account Menu Card ────────────────────────────────────────────────────────
 const ACCOUNT_MENU_ITEMS = [
-  { id: "orders",   label: "My Orders",       sub: "Track, return or buy again",       emoji: "📦" },
-  { id: "wishlist", label: "My Wishlist",      sub: "Products you saved for later",     emoji: "♡"  },
-  { id: "profile",  label: "Edit Profile",     sub: "Name, email and personal details", emoji: "👤" },
-  { id: "address",  label: "Manage Addresses", sub: "Add or edit delivery addresses",   emoji: "📍" },
-  { id: "password", label: "Change Password",  sub: "Update your login password",       emoji: "🔒" },
-  { id: "support",  label: "Help & Support",   sub: "Raise a ticket or get help",       emoji: "🎧" },
+  { id: "orders", label: "My Orders", sub: "Track, return or buy again", icon: <MaterialIcons name="inventory" size={20} color={FK.blue} /> },
+  { id: "wishlist", label: "My Wishlist", sub: "Products you saved for later", icon: <Ionicons name="heart-outline" size={20} color={FK.blue} /> },
+  { id: "profile", label: "Edit Profile", sub: "Name, email and personal details", icon: <MaterialIcons name="person" size={20} color={FK.blue} /> },
+  { id: "address", label: "Manage Addresses", sub: "Add or edit delivery addresses", icon: <MaterialIcons name="location-on" size={20} color={FK.blue} /> },
+  { id: "password", label: "Change Password", sub: "Update your login password", icon: <MaterialIcons name="lock" size={20} color={FK.blue} /> },
+  { id: "support", label: "Help & Support", sub: "Raise a ticket or get help", icon: <MaterialIcons name="headset-mic" size={20} color={FK.blue} /> },
 ];
 
 const AccountMenuCard = ({ profile, navigateTo, onLogout, wishCount, orderCount }) => {
@@ -404,7 +425,8 @@ const AccountMenuCard = ({ profile, navigateTo, onLogout, wishCount, orderCount 
         <View style={amc.avatar}>
           {profile?.avatar
             ? <Image source={{ uri: profile.avatar }} style={{ width: "100%", height: "100%" }} />
-            : <Text style={{ fontSize: 26 }}>👤</Text>}
+            : <MaterialIcons name="person" size={26} color={FK.blue} />}
+
         </View>
         <View style={{ flex: 1 }}>
           <Text style={amc.name} numberOfLines={1}>{profile?.name || profile?.fullName || "Customer"}</Text>
@@ -419,7 +441,7 @@ const AccountMenuCard = ({ profile, navigateTo, onLogout, wishCount, orderCount 
 
       {/* Navigation rows */}
       {ACCOUNT_MENU_ITEMS.map((item, idx) => {
-        const badge  = badges[item.id] || 0;
+        const badge = badges[item.id] || 0;
         const isLast = idx === ACCOUNT_MENU_ITEMS.length - 1;
         return (
           <TouchableOpacity
@@ -427,7 +449,7 @@ const AccountMenuCard = ({ profile, navigateTo, onLogout, wishCount, orderCount 
             onPress={() => navigateTo(item.id)}
             style={[amc.row, !isLast && amc.rowBorder]}>
             <View style={amc.rowIcon}>
-              <Text style={{ fontSize: 18 }}>{item.emoji}</Text>
+              {item.icon}
             </View>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -440,37 +462,38 @@ const AccountMenuCard = ({ profile, navigateTo, onLogout, wishCount, orderCount 
               </View>
               <Text style={amc.rowSub}>{item.sub}</Text>
             </View>
-            <Text style={{ color: FK.textLight, fontSize: 18 }}>›</Text>
+            <MaterialIcons name="chevron-right" size={22} color={FK.textLight} />
+
           </TouchableOpacity>
         );
       })}
 
       <View style={amc.divider} />
       <TouchableOpacity onPress={onLogout} style={amc.logoutRow}>
-        <Text style={{ fontSize: 18 }}>🚪</Text>
+        <MaterialIcons name="logout" size={20} color="#C62828" />
         <Text style={amc.logoutTxt}>Logout</Text>
       </TouchableOpacity>
     </View>
   );
 };
 const amc = StyleSheet.create({
-  card:           { backgroundColor: FK.white, marginBottom: 8 },
-  profileRow:     { flexDirection: "row", alignItems: "center", gap: 12, padding: 16 },
-  avatar:         { width: 54, height: 54, borderRadius: 27, backgroundColor: FK.blueLight, overflow: "hidden", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#C5D8FB" },
-  name:           { fontSize: 15, fontWeight: "700", color: FK.text },
-  phone:          { fontSize: 12, color: FK.textSub, marginTop: 2 },
+  card: { backgroundColor: FK.white, marginBottom: 8 },
+  profileRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16 },
+  avatar: { width: 54, height: 54, borderRadius: 27, backgroundColor: FK.blueLight, overflow: "hidden", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#C5D8FB" },
+  name: { fontSize: 15, fontWeight: "700", color: FK.text },
+  phone: { fontSize: 12, color: FK.textSub, marginTop: 2 },
   editProfileBtn: { borderWidth: 1.5, borderColor: FK.blue, borderRadius: 4, paddingHorizontal: 12, paddingVertical: 5 },
   editProfileTxt: { fontSize: 12, fontWeight: "700", color: FK.blue },
-  divider:        { height: 1, backgroundColor: FK.divider },
-  row:            { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 16, paddingVertical: 14 },
-  rowBorder:      { borderBottomWidth: 1, borderBottomColor: FK.divider },
-  rowIcon:        { width: 40, height: 40, borderRadius: 20, backgroundColor: FK.bg, alignItems: "center", justifyContent: "center" },
-  rowLabel:       { fontSize: 14, fontWeight: "600", color: FK.text },
-  rowSub:         { fontSize: 12, color: FK.textSub, marginTop: 2 },
-  badge:          { backgroundColor: FK.badge, borderRadius: 99, minWidth: 18, height: 18, paddingHorizontal: 5, alignItems: "center", justifyContent: "center" },
-  badgeTxt:       { color: FK.white, fontSize: 10, fontWeight: "800" },
-  logoutRow:      { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 16, paddingVertical: 14 },
-  logoutTxt:      { fontSize: 14, fontWeight: "600", color: "#C62828" },
+  divider: { height: 1, backgroundColor: FK.divider },
+  row: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 16, paddingVertical: 14 },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: FK.divider },
+  rowIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: FK.bg, alignItems: "center", justifyContent: "center" },
+  rowLabel: { fontSize: 14, fontWeight: "600", color: FK.text },
+  rowSub: { fontSize: 12, color: FK.textSub, marginTop: 2 },
+  badge: { backgroundColor: FK.badge, borderRadius: 99, minWidth: 18, height: 18, paddingHorizontal: 5, alignItems: "center", justifyContent: "center" },
+  badgeTxt: { color: FK.white, fontSize: 10, fontWeight: "800" },
+  logoutRow: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 16, paddingVertical: 14 },
+  logoutTxt: { fontSize: 14, fontWeight: "600", color: "#C62828" },
 });
 
 // ─── MAIN DASHBOARD ───────────────────────────────────────────────────────────
@@ -480,25 +503,25 @@ export default function UserDashboard() {
   const { logout } = useAuth(); // ← pulled from context
 
   // ✅ Yeh add karo
-const { tab: initialTab } = useLocalSearchParams();
+  const { tab: initialTab } = useLocalSearchParams();
 
-// ✅ useState ko yeh karo
-const [activeTab, setActiveTab] = useState(initialTab || "dashboard");
+  // ✅ useState ko yeh karo
+  const [activeTab, setActiveTab] = useState(initialTab || "dashboard");
 
-  const [profile,          setProfile]          = useState(null);
-  const [cartData,         setCartData]         = useState({ items: [] });
-  const [wishlistData,     setWishlistData]     = useState({ products: [] });
-  const [ordersData,       setOrdersData]       = useState([]);
-  const [recentViewed,     setRecentViewed]     = useState([]);
-  const [loading,          setLoading]          = useState(true);
-  const [cartTotal,        setCartTotal]        = useState(0);
-  const [toast,            setToast]            = useState(null);
-  const [addresses,        setAddresses]        = useState([]);
-  const [addrLoading,      setAddrLoading]      = useState(false);
-  const [showAddrModal,    setShowAddrModal]    = useState(false);
-  const [editingAddr,      setEditingAddr]      = useState(null);
-  const [savingAddr,       setSavingAddr]       = useState(false);
-  const [deletingAddrId,   setDeletingAddrId]   = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [cartData, setCartData] = useState({ items: [] });
+  const [wishlistData, setWishlistData] = useState({ products: [] });
+  const [ordersData, setOrdersData] = useState([]);
+  const [recentViewed, setRecentViewed] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [cartTotal, setCartTotal] = useState(0);
+  const [toast, setToast] = useState(null);
+  const [addresses, setAddresses] = useState([]);
+  const [addrLoading, setAddrLoading] = useState(false);
+  const [showAddrModal, setShowAddrModal] = useState(false);
+  const [editingAddr, setEditingAddr] = useState(null);
+  const [savingAddr, setSavingAddr] = useState(false);
+  const [deletingAddrId, setDeletingAddrId] = useState(null);
   const [settingDefaultId, setSettingDefaultId] = useState(null);
 
   const navigateTo = (tab) => setActiveTab(tab);
@@ -521,12 +544,12 @@ const [activeTab, setActiveTab] = useState(initialTab || "dashboard");
       const [cart, wish, orders, prof, addrs] = await Promise.allSettled([
         fetchCart(), fetchWishlist(), fetchOrders(), fetchProfile(), fetchAddresses(),
       ]);
-      if (cart.status   === "fulfilled") setCartData(cart.value);
-      if (wish.status   === "fulfilled") setWishlistData(wish.value);
+      if (cart.status === "fulfilled") setCartData(cart.value);
+      if (wish.status === "fulfilled") setWishlistData(wish.value);
       if (orders.status === "fulfilled") setOrdersData(Array.isArray(orders.value) ? orders.value : orders.value?.orders || []);
-      if (prof.status   === "fulfilled") setProfile(prof.value?.user || prof.value);
-      if (addrs.status  === "fulfilled") setAddresses(addrs.value?.addresses || []);
-      try { const rv = await fetchRecentlyViewed(); setRecentViewed(rv?.products || []); } catch {}
+      if (prof.status === "fulfilled") setProfile(prof.value?.user || prof.value);
+      if (addrs.status === "fulfilled") setAddresses(addrs.value?.addresses || []);
+      try { const rv = await fetchRecentlyViewed(); setRecentViewed(rv?.products || []); } catch { }
     } finally { setLoading(false); }
   }, []);
 
@@ -537,7 +560,7 @@ const [activeTab, setActiveTab] = useState(initialTab || "dashboard");
       setAddrLoading(true);
       fetchAddresses()
         .then(d => setAddresses(d?.addresses || []))
-        .catch(() => {})
+        .catch(() => { })
         .finally(() => setAddrLoading(false));
     }
   }, [activeTab]);
@@ -550,13 +573,13 @@ const [activeTab, setActiveTab] = useState(initialTab || "dashboard");
     }, 0));
   }, [cartData]);
 
-  const cartItems    = cartData?.items || [];
-  const cartCount    = cartItems.reduce((s, i) => s + (i.quantity || 1), 0);
+  const cartItems = cartData?.items || [];
+  const cartCount = cartItems.reduce((s, i) => s + (i.quantity || 1), 0);
   const wishProducts = wishlistData?.products || [];
-  const wishCount    = wishProducts.length;
-  const orderCount   = ordersData.length;
+  const wishCount = wishProducts.length;
+  const orderCount = ordersData.length;
   const ongoingCount = ordersData.filter(o => ["pending", "processing", "shipped"].includes(o.status?.toLowerCase())).length;
-  const defaultAddr  = addresses.find(a => a.isDefault) || addresses[0] || null;
+  const defaultAddr = addresses.find(a => a.isDefault) || addresses[0] || null;
 
   // ── Logout ───────────────────────────────────────────────────────────────────
   // Calls context logout() which clears storage + sets userToken to null.
@@ -595,7 +618,7 @@ const [activeTab, setActiveTab] = useState(initialTab || "dashboard");
         setAddresses(res.addresses || []);
         setToast({ message: "Address removed", type: "success" });
       }
-    } catch {}
+    } catch { }
     finally { setDeletingAddrId(null); }
   };
 
@@ -607,49 +630,50 @@ const [activeTab, setActiveTab] = useState(initialTab || "dashboard");
         setAddresses(res.addresses || []);
         setToast({ message: "Default address updated", type: "success" });
       }
-    } catch {}
+    } catch { }
     finally { setSettingDefaultId(null); }
   };
 
   // ── Sub-pages ────────────────────────────────────────────────────────────────
-if (activeTab === "cart") return (
-  <SafeAreaView style={{ flex: 1, backgroundColor: FK.blue }}>
-    <SubPageHeader title="My Cart" onBack={goBack} topInset={insets.top} />
-    <ScrollView style={{ backgroundColor: FK.bg }} contentContainerStyle={{ padding: 12, paddingBottom: 30 }}>
-      {cartItems.length === 0
-        ? (
-          <View style={empty.wrap}>
-            <Text style={empty.icon}>🛒</Text>
-            <Text style={empty.title}>Your cart is empty!</Text>
-            <Text style={empty.sub}>Add items to get started.</Text>
-            <TouchableOpacity onPress={() => router.push("/products")} style={empty.btn}>
-              <Text style={empty.btnTxt}>BROWSE PRODUCTS</Text>
-            </TouchableOpacity>
-          </View>
-        )
-        : (
-          <>
-            {cartItems.map((item, i) => (
-              <CartItemRow key={item.id || i} item={item}
-                onQtyChange={async (id, qty) => setCartData(await apiUpdateCartItem(id, qty))}
-                onRemove={async (id) => setCartData(await apiRemoveFromCart(id))} />
-            ))}
-            <View style={[dash.cartFooter, { marginTop: 16, backgroundColor: FK.white, padding: 14, borderRadius: 4 }]}>
-              <View>
-                <Text style={{ fontSize: 11, color: FK.textSub }}>Total Amount</Text>
-                <Text style={{ fontSize: 18, fontWeight: "800", color: FK.text }}>₹{cartTotal.toFixed(2)}</Text>
-              </View>
-              <TouchableOpacity onPress={() => router.push("/checkout")} style={dash.checkoutBtn}>
-                <Text style={dash.checkoutBtnTxt}>PLACE ORDER</Text>
+  if (activeTab === "cart") return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: FK.blue }}>
+      <SubPageHeader title="My Cart" onBack={goBack} topInset={insets.top} />
+      <ScrollView style={{ backgroundColor: FK.bg }} contentContainerStyle={{ padding: 12, paddingBottom: 30 }}>
+        {cartItems.length === 0
+          ? (
+            <View style={empty.wrap}>
+              <MaterialIcons name="shopping-cart" size={44} color={FK.blue} />
+
+              <Text style={empty.title}>Your cart is empty!</Text>
+              <Text style={empty.sub}>Add items to get started.</Text>
+              <TouchableOpacity onPress={() => router.push("/products")} style={empty.btn}>
+                <Text style={empty.btnTxt}>BROWSE PRODUCTS</Text>
               </TouchableOpacity>
             </View>
-          </>
-        )
-      }
-    </ScrollView>
-    {toast && <Toast {...toast} onDone={() => setToast(null)} />}
-  </SafeAreaView>
-);
+          )
+          : (
+            <>
+              {cartItems.map((item, i) => (
+                <CartItemRow key={item.id || i} item={item}
+                  onQtyChange={async (id, qty) => setCartData(await apiUpdateCartItem(id, qty))}
+                  onRemove={async (id) => setCartData(await apiRemoveFromCart(id))} />
+              ))}
+              <View style={[dash.cartFooter, { marginTop: 16, backgroundColor: FK.white, padding: 14, borderRadius: 4 }]}>
+                <View>
+                  <Text style={{ fontSize: 11, color: FK.textSub }}>Total Amount</Text>
+                  <Text style={{ fontSize: 18, fontWeight: "800", color: FK.text }}>₹{cartTotal.toFixed(2)}</Text>
+                </View>
+                <TouchableOpacity onPress={() => router.push("/checkout")} style={dash.checkoutBtn}>
+                  <Text style={dash.checkoutBtnTxt}>PLACE ORDER</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )
+        }
+      </ScrollView>
+      {toast && <Toast {...toast} onDone={() => setToast(null)} />}
+    </SafeAreaView>
+  );
   if (activeTab === "orders") return (
     <SafeAreaView style={{ flex: 1, backgroundColor: FK.blue }}>
       <SubPageHeader title="My Orders" onBack={goBack} topInset={insets.top} />
@@ -666,7 +690,8 @@ if (activeTab === "cart") return (
         {loading && <ActivityIndicator color={FK.blue} size="large" style={{ marginTop: 40 }} />}
         {!loading && wishCount === 0 && (
           <View style={empty.wrap}>
-            <Text style={empty.icon}>♡</Text>
+            <Ionicons name="heart-outline" size={44} color={FK.blue} />
+
             <Text style={empty.title}>Your Wishlist is empty!</Text>
             <Text style={empty.sub}>Save items you love for later.</Text>
             <TouchableOpacity onPress={() => router.push("/products")} style={empty.btn}>
@@ -726,7 +751,8 @@ if (activeTab === "cart") return (
           : addresses.length === 0
             ? (
               <View style={empty.wrap}>
-                <Text style={empty.icon}>📍</Text>
+                <MaterialIcons name="location-on" size={44} color={FK.blue} />
+
                 <Text style={empty.title}>No saved addresses</Text>
                 <Text style={empty.sub}>Add an address to speed up checkout.</Text>
               </View>
@@ -768,51 +794,65 @@ if (activeTab === "cart") return (
             <Text style={dash.memberName} numberOfLines={1}>
               {loading ? "Loading…" : profile?.name || profile?.fullName || "Welcome back!"}
             </Text>
-            <Text style={dash.memberTier}>⚡ GraminKart Member</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <MaterialIcons name="bolt" size={14} color="rgba(255,255,255,0.85)" />
+              <Text style={dash.memberTier}>GraminKart Member</Text>
+            </View>
           </View>
           <View style={dash.memberAvatarWrap}>
             {profile?.avatar
               ? <Image source={{ uri: profile.avatar }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
-              : <Text style={{ fontSize: 30 }}>🛒</Text>}
+              : <MaterialIcons name="shopping-cart" size={30} color={FK.white} />}
+
           </View>
         </View>
 
         {/* Branding strip */}
         <View style={dash.brandStrip}>
-          <Text style={dash.brandLogo}>🌿 GraminKart</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <MaterialCommunityIcons name="leaf" size={18} color={FK.blue} />
+            <Text style={dash.brandLogo}>GraminKart</Text>
+          </View>
           <Text style={dash.brandTagline}>Your rural marketplace</Text>
         </View>
 
         {/* Cart Summary */}
         {/* Cart Summary */}
-<View style={dash.section}>
-  <SectionHeader title="My Cart" />
-  {loading
-    ? <View style={{ height: 48, backgroundColor: FK.divider, borderRadius: 4 }} />
-    : cartItems.length === 0
-      ? (
-        <TouchableOpacity style={dash.addAddrInline} onPress={() => router.push("/products")}>
-          <Text style={{ color: FK.blue, fontWeight: "700", fontSize: 13 }}>🛒  Browse Products to add items</Text>
-        </TouchableOpacity>
-      )
-      : (
-        <TouchableOpacity style={dash.cartPreview} onPress={() => navigateTo("cart")} activeOpacity={0.8}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
-            <Text style={{ fontSize: 28 }}>🛒</Text>
-            <View>
-              <Text style={{ fontSize: 14, fontWeight: "700", color: FK.text }}>
-                {cartCount} item{cartCount !== 1 ? "s" : ""} in cart
-              </Text>
-              <Text style={{ fontSize: 13, color: FK.textSub, marginTop: 2 }}>
-                Total: <Text style={{ fontWeight: "800", color: FK.text }}>₹{cartTotal.toFixed(2)}</Text>
-              </Text>
-            </View>
-          </View>
-          <Text style={{ color: FK.blue, fontSize: 22, marginRight: 4 }}>›</Text>
-        </TouchableOpacity>
-      )
-  }
-</View>
+        <View style={dash.section}>
+          <SectionHeader title="My Cart" />
+          {loading
+            ? <View style={{ height: 48, backgroundColor: FK.divider, borderRadius: 4 }} />
+            : cartItems.length === 0
+              ? (
+                <TouchableOpacity style={dash.addAddrInline} onPress={() => router.push("/products")}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <MaterialIcons name="shopping-cart" size={16} color={FK.blue} />
+                    <Text style={{ color: FK.blue, fontWeight: "700", fontSize: 13 }}>
+                      Browse Products to add items
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )
+              : (
+                <TouchableOpacity style={dash.cartPreview} onPress={() => navigateTo("cart")} activeOpacity={0.8}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+                    <MaterialIcons name="shopping-cart" size={28} color={FK.blue} />
+
+                    <View>
+                      <Text style={{ fontSize: 14, fontWeight: "700", color: FK.text }}>
+                        {cartCount} item{cartCount !== 1 ? "s" : ""} in cart
+                      </Text>
+                      <Text style={{ fontSize: 13, color: FK.textSub, marginTop: 2 }}>
+                        Total: <Text style={{ fontWeight: "800", color: FK.text }}>₹{cartTotal.toFixed(2)}</Text>
+                      </Text>
+                    </View>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={FK.blue} />
+
+                </TouchableOpacity>
+              )
+          }
+        </View>
 
         {/* Default Address */}
         <View style={dash.section}>
@@ -825,9 +865,13 @@ if (activeTab === "cart") return (
             : defaultAddr
               ? (
                 <View style={dash.addrPreview}>
-                  <Text style={{ fontSize: 18, marginRight: 10 }}>
-                    {defaultAddr.type === "Home" ? "🏠" : defaultAddr.type === "Work" ? "💼" : "📍"}
-                  </Text>
+                  <View style={{ marginRight: 10 }}>
+                    {defaultAddr.type === "Home"
+                      ? <MaterialIcons name="home" size={20} color={FK.blue} />
+                      : defaultAddr.type === "Work"
+                        ? <MaterialIcons name="work" size={20} color={FK.blue} />
+                        : <MaterialIcons name="location-on" size={20} color={FK.blue} />}
+                  </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 13, fontWeight: "700", color: FK.text }}>
                       {defaultAddr.name}
@@ -855,23 +899,25 @@ if (activeTab === "cart") return (
             : recentViewed.length === 0
               ? <Text style={{ fontSize: 13, color: FK.textSub, paddingVertical: 10 }}>No recently viewed products.</Text>
               : recentViewed.map((p, i) => {
-                  const price = Number(p.sellingPrice ?? p.price ?? 0);
-                  const img   = p.thumbnail || p.image || p.images?.[0];
-                  return (
-                    <TouchableOpacity key={p.id || i} style={dash.rvRow} onPress={() => router.push(`/product/${p.id}`)}>
-                      <View style={dash.rvImg}>
-                        {img
-                          ? <Image source={{ uri: img }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
-                          : <Text style={{ fontSize: 22 }}>📦</Text>}
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text numberOfLines={2} style={{ fontSize: 13, color: FK.text, lineHeight: 18 }}>{p.name}</Text>
-                        <Text style={{ fontSize: 14, fontWeight: "700", color: FK.text, marginTop: 4 }}>₹{price.toFixed(2)}</Text>
-                      </View>
-                      <Text style={{ color: FK.textLight, fontSize: 18 }}>›</Text>
-                    </TouchableOpacity>
-                  );
-                })
+                const price = Number(p.sellingPrice ?? p.price ?? 0);
+                const img = p.thumbnail || p.image || p.images?.[0];
+                return (
+                  <TouchableOpacity key={p.id || i} style={dash.rvRow} onPress={() => router.push(`/product/${p.id}`)}>
+                    <View style={dash.rvImg}>
+                      {img
+                        ? <Image source={{ uri: img }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                        : <MaterialIcons name="inventory-2" size={22} color={FK.textLight} />}
+
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text numberOfLines={2} style={{ fontSize: 13, color: FK.text, lineHeight: 18 }}>{p.name}</Text>
+                      <Text style={{ fontSize: 14, fontWeight: "700", color: FK.text, marginTop: 4 }}>₹{price.toFixed(2)}</Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={22} color={FK.textLight} />
+
+                  </TouchableOpacity>
+                );
+              })
           }
         </View>
 
@@ -896,42 +942,42 @@ if (activeTab === "cart") return (
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 const empty = StyleSheet.create({
-  wrap:    { alignItems: "center", paddingVertical: 50 },
+  wrap: { alignItems: "center", paddingVertical: 50 },
   rowWrap: { flexDirection: "row", gap: 14, alignItems: "center", paddingVertical: 16 },
-  icon:    { fontSize: 44, marginBottom: 10 },
-  title:   { fontSize: 17, fontWeight: "700", color: FK.text, marginBottom: 6 },
-  sub:     { fontSize: 13, color: FK.textSub, textAlign: "center" },
-  btn:     { marginTop: 20, borderWidth: 1.5, borderColor: FK.blue, paddingHorizontal: 28, paddingVertical: 10, borderRadius: 4 },
-  btnTxt:  { color: FK.blue, fontWeight: "700", fontSize: 13, letterSpacing: 0.5 },
+  icon: { fontSize: 44, marginBottom: 10 },
+  title: { fontSize: 17, fontWeight: "700", color: FK.text, marginBottom: 6 },
+  sub: { fontSize: 13, color: FK.textSub, textAlign: "center" },
+  btn: { marginTop: 20, borderWidth: 1.5, borderColor: FK.blue, paddingHorizontal: 28, paddingVertical: 10, borderRadius: 4 },
+  btnTxt: { color: FK.blue, fontWeight: "700", fontSize: 13, letterSpacing: 0.5 },
 });
 
 // ─── Dashboard styles ─────────────────────────────────────────────────────────
 const dash = StyleSheet.create({
-  memberBanner:     { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 14, paddingBottom: 18, backgroundColor: FK.blue },
-  memberName:       { fontSize: 16, fontWeight: "700", color: FK.white, maxWidth: SW * 0.55 },
-  memberTier:       { fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: "500", marginTop: 2 },
+  memberBanner: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 14, paddingBottom: 18, backgroundColor: FK.blue },
+  memberName: { fontSize: 16, fontWeight: "700", color: FK.white, maxWidth: SW * 0.55 },
+  memberTier: { fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: "500", marginTop: 2 },
   memberAvatarWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(255,255,255,0.15)", overflow: "hidden", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "rgba(255,255,255,0.3)" },
-  brandStrip:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 10, backgroundColor: FK.white, borderBottomWidth: 1, borderBottomColor: FK.divider, marginBottom: 8 },
-  brandLogo:        { fontSize: 18, fontWeight: "900", color: FK.blue, letterSpacing: 0.3 },
-  brandTagline:     { fontSize: 12, color: FK.textSub, fontStyle: "italic" },
-  section:          { backgroundColor: FK.white, padding: 14, marginBottom: 8 },
-  cartFooter:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: FK.divider },
-  checkoutBtn:      { backgroundColor: FK.badge, paddingHorizontal: 24, paddingVertical: 11, borderRadius: 4 },
-  checkoutBtnTxt:   { color: "#fff", fontSize: 13, fontWeight: "800", letterSpacing: 0.8 },
-  addrPreview:      { flexDirection: "row", alignItems: "flex-start", padding: 12, backgroundColor: FK.blueLight, borderRadius: 4, borderWidth: 1, borderColor: "#c5fbd0" },
-  addAddrInline:    { paddingVertical: 12, alignItems: "center", borderWidth: 1.5, borderColor: FK.blue, borderRadius: 4, borderStyle: "dashed" },
-  addAddrBtn:       { marginTop: 14, borderWidth: 1.5, borderColor: FK.blue, borderStyle: "dashed", borderRadius: 4, paddingVertical: 13, alignItems: "center" },
-  addAddrBtnTxt:    { color: FK.blue, fontSize: 14, fontWeight: "700", letterSpacing: 0.5 },
-  rvRow:            { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: FK.divider },
-  rvImg:            { width: 58, height: 58, borderRadius: 4, backgroundColor: "#F9F9F9", overflow: "hidden", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: FK.divider },
+  brandStrip: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 10, backgroundColor: FK.white, borderBottomWidth: 1, borderBottomColor: FK.divider, marginBottom: 8 },
+  brandLogo: { fontSize: 18, fontWeight: "900", color: FK.blue, letterSpacing: 0.3 },
+  brandTagline: { fontSize: 12, color: FK.textSub, fontStyle: "italic" },
+  section: { backgroundColor: FK.white, padding: 14, marginBottom: 8 },
+  cartFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: FK.divider },
+  checkoutBtn: { backgroundColor: FK.badge, paddingHorizontal: 24, paddingVertical: 11, borderRadius: 4 },
+  checkoutBtnTxt: { color: "#fff", fontSize: 13, fontWeight: "800", letterSpacing: 0.8 },
+  addrPreview: { flexDirection: "row", alignItems: "flex-start", padding: 12, backgroundColor: FK.blueLight, borderRadius: 4, borderWidth: 1, borderColor: "#c5fbd0" },
+  addAddrInline: { paddingVertical: 12, alignItems: "center", borderWidth: 1.5, borderColor: FK.blue, borderRadius: 4, borderStyle: "dashed" },
+  addAddrBtn: { marginTop: 14, borderWidth: 1.5, borderColor: FK.blue, borderStyle: "dashed", borderRadius: 4, paddingVertical: 13, alignItems: "center" },
+  addAddrBtnTxt: { color: FK.blue, fontSize: 14, fontWeight: "700", letterSpacing: 0.5 },
+  rvRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: FK.divider },
+  rvImg: { width: 58, height: 58, borderRadius: 4, backgroundColor: "#F9F9F9", overflow: "hidden", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: FK.divider },
   cartPreview: {
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "space-between",
-  padding: 12,
-  backgroundColor: FK.blueLight,
-  borderRadius: 4,
-  borderWidth: 1,
-  borderColor: "#c5fbd0",
-},
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+    backgroundColor: FK.blueLight,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: "#c5fbd0",
+  },
 });
